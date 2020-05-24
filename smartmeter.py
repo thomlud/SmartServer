@@ -4,13 +4,29 @@
 # last mod: Thomas Ludwig, 2020-05-22 onto EMH ED300L
 # For documentation and further information see http://www.kabza.de/MyHome/SmartMeter.html
 import binascii
-import flask
-import flask_sqlalchemy
+from datetime import datetime
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 import json
+import platform
 import sys
 import serial
 import threading
 import time
+
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vlues.db'
+db = SQLAlchemy(app)
+
+class PowerLog(db.Model)
+    timestamp = db.Column(db.DateTime, primary_key=True)
+    energy1 = db.Column(db.Double, nullable=False)
+    energy2 = db.Column(db.Double, nullable=False)
+    power = db.Column(db.Double, nullable=False)
+
+
+db.create_all()
 
 
 def writexml(t, W1, W2, P):
@@ -49,6 +65,7 @@ def powermeter():
         if pos != -1:
             # print(data + '\n')
             timestamp = (time.strftime("%Y-%m-%d ") + time.strftime("%H:%M:%S"))
+            dt = datetime.utcnow
             result = timestamp
 
             search = '0100010801ff'
@@ -82,15 +99,23 @@ def powermeter():
                 result = result + ';' + str(power)
 
             writexml(timestamp, energy1, energy2, power)
-
+            pl = PowerLog(timestamp, energy1, energy2, power)
+            db.session.add(pl)
+            db.session.commit()
             with open('output.csv', 'a') as logfile:
                 logfile.write(result + '\n')
             data = ''
 
 
+@app.route('/')
+def home():
+    return 'Hello'
+
+
 def main():
-    powermeter()
+    if platform.system == "linux":
+        powermeter()
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
