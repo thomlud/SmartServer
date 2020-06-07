@@ -9,21 +9,36 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import json
 import platform
-import sys
+import pprint
+# import sys
 import serial
-import threading
+from threading import Thread
 import time
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vlues.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///values.db'
 db = SQLAlchemy(app)
 
-class PowerLog(db.Model)
-    timestamp = db.Column(db.DateTime, primary_key=True)
-    energy1 = db.Column(db.Double, nullable=False)
-    energy2 = db.Column(db.Double, nullable=False)
-    power = db.Column(db.Double, nullable=False)
+class PowerLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.String, nullable=False)
+    energy1 = db.Column(db.Float, nullable=False)
+    energy2 = db.Column(db.Float, nullable=False)
+    power = db.Column(db.Float, nullable=False)
+    
+    def __init__(self, timestamp, energy1, energy2, power):
+        self.timestamp = timestamp
+        self.energy1 = energy1
+        self.energy2 = energy2
+        self.power = power
+        
+    def __repr__(self):
+        answer = json.dumps({"id": self.id, "timestamp": self.timestamp,
+                             "energy1": self.energy1, "energy2": self.energy2,
+                             "power": self.power}, indent=4)
+        return answer
 
 
 db.create_all()
@@ -99,22 +114,32 @@ def powermeter():
                 result = result + ';' + str(power)
 
             writexml(timestamp, energy1, energy2, power)
-            pl = PowerLog(timestamp, energy1, energy2, power)
+            pl = PowerLog(timestamp=timestamp, energy1=energy1, energy2=energy2, power=power)
             db.session.add(pl)
             db.session.commit()
             with open('output.csv', 'a') as logfile:
                 logfile.write(result + '\n')
             data = ''
+            time.sleep(1)
+
+def queryData():
+    vals = db.session.query(PowerLog).order_by(
+        PowerLog.id.desc()).first()
+    # pprint.pprint(vals)
+    return str(vals)
 
 
 @app.route('/')
 def home():
-    return 'Hello'
+    return queryData()
 
 
 def main():
-    if platform.system == "linux":
-        powermeter()
+    if platform.system() == "Linux":
+       # powermeter()
+       t1 = Thread(target=powermeter)
+       t1.start()
+    app.run(host='0.0.0.0', port=8888, debug=True, use_reloader=True)
 
 
 if __name__ == "__main__":
