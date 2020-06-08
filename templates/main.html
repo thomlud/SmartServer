@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+{% import "navbar.html" as nav %}
+
+{% block content %}
+
+    {% block navbar %}
+        {{ nav }}
+    {% endblock navbar %}
+
+{% block head_control %}
+<div class="container-fluid">
+  {% if obu_state == "off"%}
+      <div class="row">
+          <div class="col-sm">
+              <form method="post">
+                <div class="btn-group btn-group-toggle" data-toggle="tooltip" name="obu">
+                    <button type="submit" class="btn btn-secondary" name="obu" value="off" disabled>Off</button>
+                    <button type="submit" class="btn btn-primary" name="obu" value="on">On</button>
+                    <button type="button" class="btn btn-outline-danger text-nowrap" disabled>Onboard-Unit</button>
+                </div>
+              </form>
+          </div>
+          <div class="col-sm"></div>
+          <div class="col-sm"></div>
+        </div>
+
+  {% else %}
+      <div class="row">
+          <div class="col-sm">
+              <form method="post">
+                <div class="btn-group btn-group-toggle" data-toggle="tooltip" name="obu">
+                    <button type="submit" class="btn btn-secondary" name="obu" value="off">Off</button>
+                    <button type="submit" class="btn btn-primary" name="obu" value="on" disabled>On</button>
+                    <button type="button" class="btn btn-outline-success text-nowrap" disabled>Onboard-Unit</button>
+                </div>
+              </form>
+          </div>
+
+          <div class="col-sm">
+            <form method="post">
+              <div class="btn-group btn-group-toggle" data-toggle="tooltip" name="razzia">
+                {% if razzia_state == "on" %}
+                  <button type="submit" class="btn btn-success" name="razzia" value="off">Off</button>
+                  <button type="submit" class="btn btn-danger" name="razzia" value="on" disabled>On</button>
+                  <button type="button" class="btn btn-outline-danger text-nowrap" disabled>Razzia</button>
+                {% else %}
+                  <button type="submit" class="btn btn-success" name="razzia" value="off" disabled>Off</button>
+                  <button type="submit" class="btn btn-danger" name="razzia" value="on">On</button>
+                  <button type="button" class="btn btn-outline-success text-nowrap" disabled>Razzia</button>
+                {% endif %}
+              </div>
+            </form>
+          </div>
+          <div class="col-sm">
+            <form method="post">
+              <div class="btn-group btn-group-toggle" data-toggle="tooltip" name="stoppoint">
+                <button type="button" class="btn btn-outline-primary text-nowrap" disabled>StopPoint</button>
+                <button type="button" class="btn btn-outline-primary text-nowrap" disabled><strong>#1</strong></button>
+                <button type="button" class="btn btn-outline-primary text-nowrap" disabled><strong>HBF</strong></button>
+                <button type="submit" class="btn btn-primary" data-toggle="tooltip" id="nextstop">Next Stop</button>
+              </div>
+            </form>
+          </div>
+      </div>
+
+      <div class="row">
+        <div class="col-sm mt-1">
+            <form method="post">
+              <div class="btn-group btn-group-toggle" data-toggle="tooltip" name="sntp">
+                {% if sntp_state == "on" %}
+                  <button type="submit" class="btn btn-danger" name="sntp" value="off">Off</button>
+                  <button type="submit" class="btn btn-success" name="sntp" value="on" disabled>On</button>
+                  <button type="button" class="btn btn-outline-success text-nowrap" disabled>SNTP Time Service</button>
+                {% else %}
+                  <button type="submit" class="btn btn-danger" name="sntp" value="off" disabled>Off</button>
+                  <button type="submit" class="btn btn-success" name="sntp" value="on">On</button>
+                  <button type="button" class="btn btn-outline-danger text-nowrap" disabled>SNTP Time Service</button>
+                {% endif %}
+              </div>
+            </form>
+        </div>
+        <div class="col-sm mt-1">
+            <form method="post" id="tvs_form">
+              <div class="btn-group btn-group-toggle" data-toggle="tooltip" name="tvs">
+                {% if tvs_state == "on" %}
+                  <button type="submit" class="btn btn-danger" name="tvs" value="off">Off</button>
+                  <button type="submit" class="btn btn-success" onclick="submit_form('tvs_form')" name="tvs" value="on" disabled>On</button>
+                  <button type="button" class="btn btn-outline-success text-nowrap" disabled>TicketValidationService</button>
+                {% else %}
+                  <button type="submit" class="btn btn-danger" name="tvs" value="off" disabled>Off</button>
+                  <button type="submit" class="btn btn-success" name="tvs" value="on">On</button>
+                  <button type="button" class="btn btn-outline-danger text-nowrap" disabled>TicketValidationService</button>
+                {% endif %}
+              </div>
+            </form>
+        </div>
+        <div class="col-sm mt-1">
+            <form method="post" id="cis_form">
+              <div class="btn-group btn-group-toggle" data-toggle="tooltip" name="cis">
+                {% if cis_state == "on" %}
+                  <button type="submit" class="btn btn-danger" name="cis" value="off">Off</button>
+                  <button type="submit" class="btn btn-success" name="cis" value="on" disabled>On</button>
+                  <button type="button" class="btn btn-outline-success text-nowrap" disabled>CustomerInformationService</button>
+                {% else %}
+                  <button type="submit" class="btn btn-danger" name="cis" value="off" disabled>Off</button>
+                  <button type="submit" class="btn btn-success" name="cis" value="on">On</button>
+                  <button type="button" class="btn btn-outline-danger text-nowrap" disabled>CustomerInformationService</button>
+                {% endif %}
+              </div>
+            </form>
+        </div>
+      </div>
+
+      <div class="row">
+
+        <div class="col-sm">
+          <form class="form-inline" method="post">
+              <div class="form-group">
+                <label for="exampleFormControlSelect1">select IP to use</label>
+                <select class="form-control" name="currentIP" id="exampleFormControlSelect1">
+                  {% for ip in iplist %}
+                    <option>{{ ip }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary" >Select</button>
+              </div>
+
+          </form>
+        </div>
+
+        <div class="col-sm">
+          <form method="post" id="test_form">
+            <div class="btn-group">
+              <button type="submit" class="btn btn-primary" name="test" value="default">Start Test</button>
+              <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
+                      aria-haspopup="true" aria-expanded="false">
+                <span class="sr-only">Toggle Dropdown</span>
+              </button>
+              <div class="dropdown-menu">
+                <button class="dropdown-item" type="submit" name="test" value="default" active>Standard Test</button>
+                <button class="dropdown-item" type="submit" name="test" value="permanent">Permanent Test</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="col-sm">
+          {% if test_progress > 0 %}
+            <div class="progress">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                     role="progressbar" aria-valuenow="{{ test_progress }}" aria-valuemin="0" aria-valuemax="100"
+                     style="width: {{ test_progress }}%">{{ test_progress }}
+                </div>
+            </div>
+          {% endif %}
+        </div>
+
+        <!--<div class="col-sm"></div>-->
+      </div>    <!--end row -->
+  {% endif %}
+</div>      <!--end container -->
+
+    {% endblock head_control %}
+
+    {% block obu %}
+    {% endblock obu %}
+
+    {% block table %}
+    {% endblock table %}
+
+    {% block overview %}
+
+    {% endblock overview %}
+
+{% endblock content %}
+</html>

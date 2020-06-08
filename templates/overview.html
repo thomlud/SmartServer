@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+{% extends "main.html" %}
+{% block overview %}
+
+<!-- Editable table -->
+<div class="card">
+  <h3 class="card-header text-center font-weight-bold text-uppercase py-4">Serviceübersicht</h3>
+  <div class="card-body">
+
+      <div id="table" class="table-editable">
+        <span class="table-add float-right mb-3 mr-2"><a href="#!" class="text-success"><i
+              class="fas fa-plus fa-2x" aria-hidden="true"></i></a></span>
+      <table class="table table-bordered table-responsive-md table-striped text-center table-hover">
+        <thead>
+          <tr>
+            <th class="text-center">Adresse</th>
+            <th class="text-center">Port</th>
+            <th class="text-center">Service</th>
+            <th class="text-center">Version</th>
+            <th class="text-center">Hostname</th>
+            <th class="text-center">Status</th>
+            <th class="text-center">Funktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="pt-3-half" contenteditable="true">127.0.0.1</td>
+            <td class="pt-3-half" contenteditable="true">8888</td>
+            <td class="pt-3-half" contenteditable="true">OnboardUnitCockpit</td>
+            <td class="pt-3-half" contenteditable="true">2.2</td>
+            <td class="pt-3-half" contenteditable="true">localhost.local.</td>
+            <td class="pt-3-half" contenteditable="true">
+              <span class="glyphicon glyphicon-dashboard" aria-hidden="true"></span>
+            </td>
+
+            <td>
+              <button type="button" class="btn btn-primary btn-sm"
+                      onclick="sendJSON('http://localhost:8080/razzia/GetRazzia')">Select IP</button>
+              <!-- Secondary button -->
+              <button type="button" class="btn btn-danger btn-sm waves-effect" action="../shutdown"
+                  onclick="sendJSON('http://localhost:8080/shutdown')">Shutdown Orchestrator</button>
+
+            </td>
+          </tr>
+
+          {% for svc in services %}
+          <tr>
+            <td class="pt-3-half">{{ svc.dev_address }}</td>
+            <td class="pt-3-half">{{ svc.device.port }}</td>
+            <td class="pt-3-half">{{ svc.servicename }}</td>
+            <td class="pt-3-half">{{ svc.version }}</td>
+            <td class="pt-3-half">{{ svc.device.hostname }}</td>
+            {% if svc.device.reachable %}
+              <td class="pt-3-half">
+                <span class="checkbox"> <label><input type="checkbox"
+                      value="{{ svc.dev_address }}:{{ svc.device.port }}/{{ svc.device.path }}"></label></span>
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-primary"
+                        onclick="sendJSON('http://{{ svc.dev_address }}:4735/Api/DoSearch')">Search</button>
+                <button type="button" class="btn btn-sm btn-primary"
+                        onclick="sendJSON('http://{{ svc.dev_address }}:4735/Api/DoBeepTest')">Beep</button>
+
+                <!-- Basic dropdown -->
+                <button class="btn btn-primary btn-sm dropdown-toggle mr-4" type="button" data-toggle="dropdown"
+                  aria-haspopup="true" aria-expanded="false">Commands</button>
+                    <div class="dropdown-menu">
+                        <h6 class="dropdown-header">Additional commands</h6>
+                      <!--<a class="dropdown-item" type="button" href="#" data-toggle="modal" data-target="#setconfig">
+                          Set Device ID</a>-->
+                        <a class="dropdown-item" type="button" data-toggle="collapse" data-target="#setId-Form{{ svc.id }}">
+                            Set Device ID</a>
+                      <a class="dropdown-item" type="button" href="#" data-toggle="modal" data-target="#updatedevice">
+                          Update Device</a>
+                      <a class="dropdown-item" type="button" href="#">Get Update History</a>
+                      <div class="dropdown-divider"></div>
+                      <a class="dropdown-item" type="button" href="#"
+                         onclick="sendJSON('http://{{ svc.dev_address }}:4732/DeviceManagementService/RestartDevice')">RestartDevice</a>
+                    </div>
+
+                <div class="collapse" id="setId-Form{{ svc.id }}">
+                    <div class="card card-body">
+                        <form class="form-inline" method="post" id="setDeviceId{{ svc.id }}">
+                            <input type="DeviceID"  class="form-control" placeholder="ID" id="DeviceID{{ svc.id }}">
+                            <input type="hidden" id="url{{ svc.id }}" value="http://{{ svc.dev_address }}:{{ svc.device.port }}/DeviceManagementService/SetDeviceConfiguration">
+                            <input type="submit" class="btn btn-primary" id="submitDeviceId{{ svc.id }}" value="Set DevID">
+
+                            <!--<input type="submit" class="btn btn-primary" id="submitDeviceId{{ svc.id }}" value="Set DevID"
+                                    onclick="returnJSON('http://{{ svc.dev_address }}:{{ svc.device.port }}/DeviceManagementService/SetDeviceConfiguration', DeviceID{{ svc.id }}.value)"></input>-->
+                        </form>
+                    </div>
+                </div>
+
+
+                <!-- Modal Update Device -->
+                <div class="modal fade" id="updatedevice" tabindex="-1" role="dialog" aria-labelledby="updatedevice" aria-hidden="true">
+                  <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="updatedeviceLabel">Update Device</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body">
+                          <!-- File Upload Form -->
+                          <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text" id="inputGroupFileAddon01">Upload</span>
+                            </div>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="inputGroupFile01"
+                                        aria-describedby="inputGroupFileAddon01">
+                                <label class="custom-file-label" for="inputGroupFile01">Choose file</label>
+                            </div>
+                          </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <!--<button type="button" class="btn btn-primary">Save changes</button>-->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+            {% else %}
+                <td class="pt-3-half">
+                  <span class="glyphicon glyphicon-minus" aria-hidden="true"></span></td>
+                <td class="pt-3-half">
+                <button type="button" class="btn btn-sm btn-warning">Not reachable</button>
+                </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- Editable table -->
+
+{% endblock %}

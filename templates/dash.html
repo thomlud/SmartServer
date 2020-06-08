@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+{% extends "orchestrator.html" %}
+
+{% block tab_panel %}
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item">
+        <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab"
+           aria-controls="commander" aria-selected="false">Dashboard</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="obu-tab" data-toggle="tab" href="#onboardunit" role="tab" aria-controls="profile"
+           aria-selected="true">OnBoardUnit<span class="badge badge-secondary ml-1">{{tvs_state}}</span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="update-tab" data-toggle="tab" href="#update-all" role="tab" aria-controls="contact"
+           aria-selected="false">Update All</a>
+      </li>
+    </ul>
+{% endblock tab_panel %}
+{% block tab_content %}
+<div class="tab-content">
+<!-- ### Tab-Content Dashboard ### -->
+<div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+  <div class="row">
+  <div class="col-4">
+    <form method="post" name="ntp">
+      <div class="btn-group btn-group-toggle mt-3" data-toggle="buttons" data-toggle="tooltip"
+           data-placement="top" title="Enable NTP Time Service">
+        <button type="submit" class="btn btn-success" name="ntp" value="EnableNTP">EnableNTP</button>
+        <button type="submit" class="btn btn-danger" name="ntp" value="DisableNTP">DisableNTP</button>
+      </div>
+      <label class="ml-3 mt-6">NTP Time Service
+        <span class="badge badge-secondary ml-1" id="ntp-badge">{{ntp_state}}</span>
+      </label>
+    </form>
+  </div>
+
+  <div class="col-4">
+    <form method="post" name="tvs">
+      <div class="btn-group btn-group-toggle mt-3" data-toggle="buttons"data-toggle="tooltip"
+           data-placement="top" title="Enable Ticket Validation Service">
+        <button type="submit" class="btn btn-success" href="#onboardunit" name="tvs" value="EnableTVS">EnableTVS</button>
+        <button type="submit" class="btn btn-danger" href="#home" name="tvs" value="DisableTVS">DisableTVS</button>
+      </div>
+      <label class="ml-3 mt-6">TicketValidationService
+        <span class="badge badge-secondary ml-1" id="tvs-badge">{{tvs_state}}</span>
+      </label>
+    </form>
+  </div>
+
+  <div class="col-4">
+    <button class="btn btn-primary mt-3" type="button" data-toggle="collapse" data-target="#progressBar">
+      Open Auto-Test</button>
+  </div>
+  </div>
+</div>
+
+
+<!-- ### Tab-Content OnBoardUnit ### -->
+  <div class="tab-pane fade" id="onboardunit" role="tabpanel" aria-labelledby="profile-tab">
+    <form method="post" name="sntp">
+      <div class="btn-group btn-group-toggle mt-3" data-toggle="buttons">
+        <button id="btn_enablesntp" type="submit" class="btn btn-success" name="sntp" value="EnableSNTP"
+                onclick='document.getElementById("#btn_enablesntp").disabled'>Enable NTP </button>
+        <button type="submit" class="btn btn-danger"  name="sntp" value="DisableSNTP">Disable NTP</button>
+      </div>
+      <label class="ml-3 mt-6">Time-Service<span class="badge badge-primary ml-1">{{ntp_state}}</span></label>
+    </form>
+  </div>
+<!-- ### Tab-Content UpdateAll ### -->
+  <div class="tab-pane fade" id="update-all" role="tabpanel" aria-labelledby="update-tab">
+
+  </div>
+
+</div>
+
+
+{% endblock tab_content %}
+</html>

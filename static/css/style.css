@@ -1,0 +1,25 @@
+
+
+.toggle .slider { /* Grundfläche */
+  position: absolute;
+  cursor: pointer;
+  top: 1.5em;
+  left: 2em;
+  width: 4em;
+  height: 2em;
+  background-color: #c32e04;
+  border-radius: 1em;
+  transition: all .3s ease-in-out;
+}
+
+.toggle  .slider::before {  /* verschiebbarer Button */
+  position: absolute;
+  content: "";
+  height: 1.6em;
+  width: 1.6em;
+  left: .2em;
+  bottom: .2em;
+  background-color: white;
+  border-radius: 50%;
+  transition: all .3s ease-in-out;
+}

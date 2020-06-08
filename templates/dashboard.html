@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+{% extends "orchestrator.html" %}
+
+{% block head_control %}
+
+<div class="container-fluid">
+  <div class="card card-body">
+  <div class="row">
+
+      <div class="col-5">
+        <form method="post" name="tvs">
+
+          <div class="btn-group btn-group-toggle mt-3" data-toggle="buttons"data-toggle="tooltip"
+               data-placement="top" title="Enable Ticket Validation Service">
+           <label class="mt-6">TicketValidationService
+            <span class="badge badge-primary ml-1" id="tvs-badge">{{tvs_state}}</span>
+           </label>
+           <button type="submit" class="btn btn-success" href="#onboardunit" name="tvs" value="EnableTVS">EnableTVS</button>
+           <button type="submit" class="btn btn-danger" href="#home" name="tvs" value="DisableTVS">DisableTVS</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-5">
+        <form method="post" name="ntp">
+          <label class="mt-6">NTP Time Service
+            <span class="badge badge-primary ml-1" id="ntp-badge">{{ntp_state}}</span>
+          </label>
+          <div class="btn-group btn-group-toggle mt-3" data-toggle="buttons" data-toggle="tooltip"
+               data-placement="top" title="Enable NTP Time Service">
+            <button type="submit" class="btn btn-success" name="ntp" value="EnableNTP">EnableNTP</button>
+            <button type="submit" class="btn btn-danger" name="ntp" value="DisableNTP">DisableNTP</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-2">
+        <button class="btn btn-primary mt-3" type="button" data-toggle="collapse" data-target="#progressBar">
+          Open Auto-Test</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Autotest - Collapse -->
+<div class="collapse" id="progressBar">
+  <div class="container">
+    <div class="card card-body">
+      <div class="row">
+        <div class="col-4">
+            <form method="post" name="autotest">
+              <div class="btn-group btn-group-toggle mt-3" data-toggle="buttons"data-toggle="tooltip"
+                   data-placement="top" title="Starts automatic test of all available devices">
+                <button type="submit" class="btn btn-primary" type="button" data-toggle="collapse"
+                        data-target="progressBar" name="autotest" value="start">Auto-Test
+                </button>
+              </div>
+              <label class="ml-3 mt-6">Automatic Full-Test
+              <span class="badge badge-secondary ml-1" id="autotest-badge">{{tvs_state}}</span>
+              </label>
+            </form>
+        </div>
+
+        <div class="col-8">
+          Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid.
+          Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock head_control %}
+
+</html>
