@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+{% import "navbar.html" as nav %}
+
+{% block content %}
+
+    {% block navbar %}
+        {{ nav }}
+    {% endblock navbar %}
+
+<div class="container-lg">
+  <div class="card">
+      <h3 class="card-header text-center font-weight-bold text-uppercase py-4">Energy Consumption</h3>
+        <div class="card-body">
+          <!-- ROW 1 -->
+          <div class="row">
+              <div class="col-sm">
+                  <h5>Datum / Uhrzeit</h5>
+                </div>
+                <div class="col-sm">
+                    <div class="alert alert-primary" role="alert">
+                      <h5><strong>{{currentvalues.timestamp}}</strong></h5>
+                    </div>
+                </div>
+              </div>
+
+            <!-- ROW 2 -->
+
+          <div class="row">
+              <div class="col-sm">
+                  <h5>Aktueller Verbrauch</h5>
+                </div>
+                <div class="col-sm">
+                {% if currentvalues == "low" %}
+                    <div class="alert alert-success" role="alert">
+                {% else %}
+                    <div class="alert alert-danger" role="alert">
+                {% endif %}
+                      <h4><strong>{{currentvalues.power}} W</strong></h4>
+                    </div>
+                </div>
+              </div>
+
+
+
+
+          <!-- ROW 3 -->
+          <div class="row">
+              <div class="col-sm">
+                  <h5>Zählerstand NT</h5>
+                </div>
+                <div class="col-sm">
+                    <div class="alert alert-primary" role="alert">
+                      <h5><strong>{{currentvalues.energy1}} kWh</strong></h5>
+                    </div>
+                </div>
+              </div>
+          <!-- ROW 4 -->
+          <div class="row">
+              <div class="col-sm">
+                  <h5>Zählerstand NT</h5>
+                </div>
+                <div class="col-sm">
+                    <div class="alert alert-primary" role="alert">
+                      <h5><strong>{{currentvalues.energy2}} kWh</strong></h5>
+                    </div>
+                </div>
+              </div>
+
+      </div>
+  </div>
+
+
+</div>
+
+
+
+{% endblock content %}
+</html>

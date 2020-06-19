@@ -5,7 +5,7 @@
 # For documentation and further information see http://www.kabza.de/MyHome/SmartMeter.html
 import binascii
 from datetime import datetime
-from flask import Flask
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 import json
 import platform
@@ -123,15 +123,15 @@ def powermeter():
             time.sleep(1)
 
 def queryData():
-    vals = db.session.query(PowerLog).order_by(
-        PowerLog.id.desc()).first()
-    # pprint.pprint(vals)
+    vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
     return str(vals)
 
 
 @app.route('/')
 def home():
-    return queryData()
+    currentvalues = json.loads(queryData())
+    currentlevel = "low" if currentvalues['power'] <= 500 else "high"
+    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel)
 
 
 def main():
@@ -139,7 +139,7 @@ def main():
        # powermeter()
        t1 = Thread(target=powermeter)
        t1.start()
-    app.run(host='0.0.0.0', port=8888, debug=True, use_reloader=True)
+    app.run(host='0.0.0.0', port=80, debug=True, use_reloader=True)
 
 
 if __name__ == "__main__":
