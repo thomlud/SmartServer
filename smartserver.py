@@ -40,7 +40,6 @@ class PowerLog(db.Model):
                              "power": self.power}, indent=4)
         return answer
 
-
 db.create_all()
 
 
