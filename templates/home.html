@@ -33,16 +33,15 @@
                 <div class="col-sm">
                 {% if currentvalues == "low" %}
                     <div class="alert alert-success" role="alert">
+                        <h4><strong>{{currentvalues.power}} W</strong></h4>
+                    </div>
                 {% else %}
                     <div class="alert alert-danger" role="alert">
-                {% endif %}
-                      <h4><strong>{{currentvalues.power}} W</strong></h4>
+                            <h4><strong>{{currentvalues.power}} W</strong></h4>
                     </div>
+                {% endif %}
                 </div>
               </div>
-
-
-
 
           <!-- ROW 3 -->
           <div class="row">
