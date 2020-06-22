@@ -2,7 +2,6 @@
 
 # Python code to read values from Smart Meter via SML (smart message language)
 # last mod: Thomas Ludwig, 2020-05-22 onto EMH ED300L
-# For documentation and further information see http://www.kabza.de/MyHome/SmartMeter.html
 import binascii
 from datetime import datetime
 from flask import Flask, render_template
@@ -129,7 +128,13 @@ def queryData():
 @app.route('/')
 def home():
     currentvalues = json.loads(queryData())
-    currentlevel = "low" if currentvalues['power'] <= 500 else "high"
+    if currentvalues['power'] <= 500:
+        currentlevel = "low"
+    elif currentvalues['power'] <= 2000:
+        currentlevel = "middle"
+    else:
+        currentlevel = "high"
+
     return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel)
 
 

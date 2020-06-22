@@ -35,6 +35,10 @@
                     <div class="alert alert-success" role="alert">
                         <h4><strong>{{currentvalues.power}} W</strong></h4>
                     </div>
+                {% elif currentlevel == "middle" %}
+                    <div class="alert alert-warning" role="alert">
+                        <h4><strong>{{currentvalues.power}} W</strong></h4>
+                    </div>
                 {% else %}
                     <div class="alert alert-danger" role="alert">
                             <h4><strong>{{currentvalues.power}} W</strong></h4>
@@ -68,9 +72,9 @@
 
       </div>
   </div>
-
-
 </div>
+
+
 
 
 
