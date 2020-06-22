@@ -17,24 +17,27 @@ import time
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///values.db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///values.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///power.db'
 db = SQLAlchemy(app)
 
 class PowerLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.String, nullable=False)
+    datetime = db.Column(db.DateTime, nullable=False)
+    timestamp = db.Column(db.String, nullable=True)
     energy1 = db.Column(db.Float, nullable=False)
     energy2 = db.Column(db.Float, nullable=False)
     power = db.Column(db.Float, nullable=False)
     
     def __init__(self, timestamp, energy1, energy2, power):
         self.timestamp = timestamp
+        self.datetime = datetime.today()
         self.energy1 = energy1
         self.energy2 = energy2
         self.power = power
         
     def __repr__(self):
-        answer = json.dumps({"id": self.id, "timestamp": self.timestamp,
+        answer = json.dumps({"id": self.id, "datetime": datetime, "timestamp": self.timestamp,
                              "energy1": self.energy1, "energy2": self.energy2,
                              "power": self.power}, indent=4)
         return answer
@@ -67,20 +70,15 @@ def powermeter():
     while True:
         char_bin = port.read()
         char = binascii.hexlify(char_bin)
-        # data = data + char.encode('HEX')
-        # char = codecs.encode(char_bin, "Hex")
         data = data + char.decode('ascii')
-        # data = data + char
         pos = data.find(start)
         if pos != -1:
             data = data[pos:len(data)]
         pos = data.find(end)
         if pos != -1:
-            # print(data + '\n')
             timestamp = (time.strftime("%Y-%m-%d ") + time.strftime("%H:%M:%S"))
             dt = datetime.utcnow
             result = timestamp
-
             search = '0100010801ff'
             """ search key counter value 1 """
             pos1 = data.find(search)
@@ -90,7 +88,6 @@ def powermeter():
                 energy1 = int(value1, 16) / 1e4
                 print(timestamp + ' kWh: ' + search + ' = ' + value1 + ' = ' + str(energy1) + ' kWh')
                 result = result + ';' + str(energy1)
-
             search = '0100010802ff'
             """ search key counter value 2 """
             pos2 = data.find(search)
@@ -100,7 +97,6 @@ def powermeter():
                 energy2 = int(value2, 16) / 1e4
                 print(timestamp + ' kWh: ' + search + ' = ' + value2 + ' = ' + str(energy2) + ' kWh')
                 result = result + ';' + str(energy2)
-
             search = '0100100700ff'
             """ search key topical consume """
             pos3 = data.find(search)
@@ -110,19 +106,23 @@ def powermeter():
                 power = int(value3, 16) / 1e1
                 print('W: ' + search + ' = ' + value3 + ' = ' + str(power) + ' W')
                 result = result + ';' + str(power)
-
-            writexml(timestamp, energy1, energy2, power)
+            # writexml(timestamp, energy1, energy2, power)
             pl = PowerLog(timestamp=timestamp, energy1=energy1, energy2=energy2, power=power)
             db.session.add(pl)
             db.session.commit()
-            with open('output.csv', 'a') as logfile:
-                logfile.write(result + '\n')
+            # with open('output.csv', 'a') as logfile:
+            #    logfile.write(result + '\n')
             data = ''
-            time.sleep(1)
+            time.sleep(5)
 
 def queryData():
     vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
     return str(vals)
+
+def listData():
+    pass
+    filter = ""
+    valrange = db.session.query(PowerLog).filter_by(timestamp=filter).order_by(PowerLog.id.desc()).all
 
 
 @app.route('/')
