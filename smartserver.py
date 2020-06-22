@@ -119,15 +119,22 @@ def queryData():
     vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
     return str(vals)
 
-def listData():
-    pass
-    filter = ""
-    valrange = db.session.query(PowerLog).filter_by(timestamp=filter).order_by(PowerLog.id.desc()).all
+def listData_timefilter(filt):
+    valrange = db.session.query(PowerLog).filter(PowerLog.datetime >= filt).all()
+    print(str(valrange))
+    return valrange
 
+def list_timediff(ts, sec):
+    # diff = datetime.now() - timedelta(seconds=sec)
+    diff = datetime(2020, 6, 22, 19, 33, 0)
+    result = listData_timefilter(diff)
+    return str(result)
 
 @app.route('/')
 def home():
     currentvalues = json.loads(queryData())
+    ts = datetime.now()
+    values_1h = json.loads(list_timediff(ts, 60))
     if currentvalues['power'] <= 500:
         currentlevel = "low"
     elif currentvalues['power'] <= 2000:
@@ -135,7 +142,14 @@ def home():
     else:
         currentlevel = "high"
 
-    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel)
+    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel, values_1h=values_1h)
+
+@app.route('/test/<command>')
+def test(command):
+    if command == "listdb":
+        answer = db.session.query(PowerLog).all()
+        return answer
+
 
 
 def main():
