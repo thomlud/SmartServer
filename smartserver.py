@@ -3,7 +3,7 @@
 # Python code to read values from Smart Meter via SML (smart message language)
 # last mod: Thomas Ludwig, 2020-05-22 onto EMH ED300L
 import binascii
-from datetime import datetime
+from datetime import *
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 import json
@@ -29,15 +29,15 @@ class PowerLog(db.Model):
     energy2 = db.Column(db.Float, nullable=False)
     power = db.Column(db.Float, nullable=False)
     
-    def __init__(self, timestamp, energy1, energy2, power):
+    def __init__(self, datetime, timestamp, energy1, energy2, power):
         self.timestamp = timestamp
-        self.datetime = datetime.today()
+        self.datetime = datetime
         self.energy1 = energy1
         self.energy2 = energy2
         self.power = power
         
     def __repr__(self):
-        answer = json.dumps({"id": self.id, "datetime": datetime, "timestamp": self.timestamp,
+        answer = json.dumps({"id": self.id, "datetime": self.datetime.strftime("%Y-%m-%d %H:%M:%S"), "timestamp": self.timestamp,
                              "energy1": self.energy1, "energy2": self.energy2,
                              "power": self.power}, indent=4)
         return answer
@@ -77,7 +77,7 @@ def powermeter():
         pos = data.find(end)
         if pos != -1:
             timestamp = (time.strftime("%Y-%m-%d ") + time.strftime("%H:%M:%S"))
-            dt = datetime.utcnow
+            dt = datetime.today()
             result = timestamp
             search = '0100010801ff'
             """ search key counter value 1 """
@@ -107,7 +107,7 @@ def powermeter():
                 print('W: ' + search + ' = ' + value3 + ' = ' + str(power) + ' W')
                 result = result + ';' + str(power)
             # writexml(timestamp, energy1, energy2, power)
-            pl = PowerLog(timestamp=timestamp, energy1=energy1, energy2=energy2, power=power)
+            pl = PowerLog(datetime=dt, timestamp=timestamp, energy1=energy1, energy2=energy2, power=power)
             db.session.add(pl)
             db.session.commit()
             # with open('output.csv', 'a') as logfile:
@@ -143,7 +143,7 @@ def main():
        # powermeter()
        t1 = Thread(target=powermeter)
        t1.start()
-    app.run(host='0.0.0.0', port=80, debug=True, use_reloader=True)
+    app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=True)
 
 
 if __name__ == "__main__":
