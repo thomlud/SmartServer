@@ -23,3 +23,20 @@
   border-radius: 50%;
   transition: all .3s ease-in-out;
 }
+
+.chart-grid{
+stroke: white;
+stroke-width: 1;
+}
+
+.chart-base{
+  stroke: white;
+  stroke-width: 2";
+}
+
+.chart-text{
+  stroke: white;
+  fill: white;
+  font-family: serif;
+  font-size: 16px;
+}

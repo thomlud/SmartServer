@@ -23,9 +23,7 @@
                     </div>
                 </div>
               </div>
-
-            <!-- ROW 2 -->
-
+        <!-- ROW 2 -->
           <div class="row">
               <div class="col-sm">
                   <h5>Aktueller Verbrauch</h5>
@@ -33,21 +31,21 @@
                 <div class="col-sm">
                 {% if currentlevel == "low" %}
                     <div class="alert alert-success" role="alert">
-                        <h4><strong>{{currentvalues.power}} W</strong></h4>
+                        <h4><strong>{{current_power}} W</strong></h4>
                     </div>
                 {% elif currentlevel == "middle" %}
                     <div class="alert alert-warning" role="alert">
-                        <h4><strong>{{currentvalues.power}} W</strong></h4>
+                        <h4><strong>{{current_power}} W</strong></h4>
                     </div>
                 {% else %}
                     <div class="alert alert-danger" role="alert">
-                            <h4><strong>{{currentvalues.power}} W</strong></h4>
+                            <h4><strong>{{current_power}} W</strong></h4>
                     </div>
                 {% endif %}
                 </div>
               </div>
 
-          <!-- ROW 3 -->
+      <!-- ROW 3 -->
           <div class="row">
               <div class="col-sm">
                   <h5>Zählerstand NT</h5>
@@ -58,10 +56,10 @@
                     </div>
                 </div>
               </div>
-          <!-- ROW 4 -->
+      <!-- ROW 4 -->
           <div class="row">
               <div class="col-sm">
-                  <h5>Zählerstand NT</h5>
+                  <h5>Zählerstand HT</h5>
                 </div>
                 <div class="col-sm">
                     <div class="alert alert-primary" role="alert">
@@ -71,18 +69,78 @@
           </div>
         </div>
   </div>
-</div>
 
   <div class="card">
       <h3 class="card-header text-center font-weight-bold text-uppercase py-4">History</h3>
         <div class="card-body">
-            <svg width="200" height="200" viewbox="0 0 3 2">
+            <svg width="600" height="300" viewbox="0 0 600 200">
+                <text class="chart-text" id="eins" x="0" y="0">20.000 W/h</text>
+                <line class="chart-grid" id="top" x1="0" y1="10" x2="600" y2="10" />
+                <text class="chart-text" id="zwei" x="0" y="120">2.000 W/h</text>
+                <line class="chart-grid" id="midi" x1="0" y1="130" x2="600" y2="130" />
+                <text class="chart-text" id="drei" x="0" y="190">200 W/h</text>
+                <line class="chart-base" id="base" x1="0"  y1="200" x2="600" y2="200"/>
 
-
+                <polyline style="stroke: #306f91; stroke-width: 2"
+                        fill="none" id="NT" points="0,200 25,175 50,150 75,125 100,100 150,50 600,190"/>
+                <polyline style="stroke: red; stroke-width: 2"
+                      fill="none" id="HT" points="0,200 25,150 50,100 75,200 100,175 150,150 600,50"/>
             </svg>
+
+            <svg width="600" height="400" viewbox="0 0 600 400">
+              <title id="title">A line chart showing some information</title>
+            <g id="xGrid">
+              <line x1="90" x2="90" y1="5" y2="371"></line>
+            </g>
+            <g id="yGrid">
+              <line x1="90" x2="705" y1="370" y2="370"></line>
+            </g>
+              <g>
+              <text x="100" y="400">2008</text>
+              <text x="246" y="400">2009</text>
+              <text x="392" y="400">2010</text>
+              <text x="538" y="400">2011</text>
+              <text x="684" y="400">2012</text>
+              <text x="400" y="440">Year</text>
+            </g>
+            <g class="labels y-labels">
+              <text x="80" y="15">15</text>
+              <text x="80" y="131">10</text>
+              <text x="80" y="248">5</text>
+              <text x="80" y="373">0</text>
+              <text x="50" y="200" class="label-title">Price</text>
+            </g>
+            </svg>
+
+        </div>
+  </div>
+  <div class="card">
+    <h3 class="card-header text-center font-weight-bold text-uppercase py-4">Charts</h3>
+        <div class="card-body">
+            <table class="table table-dark">
+              <thead>
+                <tr>
+                  <th scope="col">DateTime</th>
+                  <th scope="col">Energy Day</th>
+                  <th scope="col">Energy Night</th>
+                  <th scope="col">Power</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for value in values_1h %}
+                <tr>
+                  <td>{{value.datetime}}</td>
+                  <td>{{value.energy1}}</td>
+                  <td>{{value.energy2}}</td>
+                  <td>{{value.power}}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
         </div>
   </div>
 
+</div>
 
 
 {% endblock content %}

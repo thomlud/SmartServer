@@ -20,6 +20,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///values.db'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///power.db'
 db = SQLAlchemy(app)
+sensor_delay = 5    # sesor read delay in seconds
+global current_power
+current_power = 0
 
 class PowerLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -37,8 +40,8 @@ class PowerLog(db.Model):
         self.power = power
         
     def __repr__(self):
-        answer = json.dumps({"id": self.id, "datetime": self.datetime.strftime("%Y-%m-%d %H:%M:%S"), "timestamp": self.timestamp,
-                             "energy1": self.energy1, "energy2": self.energy2,
+        answer = json.dumps({"id": self.id, "datetime": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                             "timestamp": self.timestamp, "energy1": self.energy1, "energy2": self.energy2,
                              "power": self.power}, indent=4)
         return answer
 
@@ -55,7 +58,9 @@ def writexml(t, W1, W2, P):
                     <data name=\"power\" value=\"' + str(P) + '\" valueunit=\"W\" /></SmartMeter></MyHomePower>')
 
 
-def powermeter():
+def powermeter(sens_delay):
+    global current_power
+    db_write_level = 1
     port = serial.Serial(
         port='/dev/ttyUSB0',
         baudrate=9600,
@@ -68,6 +73,10 @@ def powermeter():
     end = '1b1b1b1b1a'
     data = ''
     while True:
+        if db_write_level == 1:
+            db_write_level = 0
+        else: db_write_level = 0
+
         char_bin = port.read()
         char = binascii.hexlify(char_bin)
         data = data + char.decode('ascii')
@@ -107,41 +116,65 @@ def powermeter():
                 print('W: ' + search + ' = ' + value3 + ' = ' + str(power) + ' W')
                 result = result + ';' + str(power)
             # writexml(timestamp, energy1, energy2, power)
-            pl = PowerLog(datetime=dt, timestamp=timestamp, energy1=energy1, energy2=energy2, power=power)
-            db.session.add(pl)
-            db.session.commit()
-            # with open('output.csv', 'a') as logfile:
-            #    logfile.write(result + '\n')
+            current_power = power
+            if db_write_level == 1:
+                pl = PowerLog(datetime=dt, timestamp=timestamp, energy1=energy1, energy2=energy2, power=power)
+                db.session.add(pl)
+                db.session.commit()
             data = ''
-            time.sleep(5)
+            time.sleep(sens_delay)
+
 
 def queryData():
     vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
     return str(vals)
 
-def listData():
-    pass
-    filter = ""
-    valrange = db.session.query(PowerLog).filter_by(timestamp=filter).order_by(PowerLog.id.desc()).all
+def listData_timefilter(filt):
+    valrange = db.session.query(PowerLog).filter(PowerLog.datetime >= filt).all()
+    print(str(valrange))
+    return valrange
 
+def list_timediff(ts, sec):
+    # diff = datetime.now() - timedelta(seconds=sec)
+    diff = datetime(2020, 6, 22, 19, 33, 0)
+    result = listData_timefilter(diff)
+    return str(result)
 
 @app.route('/')
 def home():
     currentvalues = json.loads(queryData())
+    ts = datetime.now()
+    values_1h = json.loads(list_timediff(ts, 60))
+    if current_power <= 500:
+        currentlevel = "low"
+    elif current_power <= 2000:
+        currentlevel = "middle"
+    else:
+        currentlevel = "high"
+
+    """ # old version from database 
     if currentvalues['power'] <= 500:
         currentlevel = "low"
     elif currentvalues['power'] <= 2000:
         currentlevel = "middle"
     else:
         currentlevel = "high"
+    """
+    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel, values_1h=values_1h,
+                           current_power=current_power)
 
-    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel)
+@app.route('/test/<command>')
+def test(command):
+    if command == "listdb":
+        answer = db.session.query(PowerLog).all()
+        return answer
+
 
 
 def main():
     if platform.system() == "Linux":
        # powermeter()
-       t1 = Thread(target=powermeter)
+       t1 = Thread(target=powermeter, args=sensor_delay)
        t1.start()
     app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=True)
 
