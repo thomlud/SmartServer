@@ -161,8 +161,8 @@ def list_timediff(ts, sec):
 def set_multiline(vals: list) -> str:
     height = 380
     length = 600
-    num = length / len(vals)
-    if int(num) > 0:
+    if len(vals) > 0:
+        num = length / len(vals)
         step = int(num)
     else:
         step = 1
