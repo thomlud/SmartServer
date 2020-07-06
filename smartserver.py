@@ -8,7 +8,7 @@ from datetime import *
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 import json
-from math import ceil
+from math import ceil, sqrt
 import platform
 import pprint
 # import sys
@@ -59,9 +59,9 @@ def writexml(t, W1, W2, P):
                     <data name=\"energy2\" value=\"' + str(W2) + '\" valueunit=\"Wh\" />\
                     <data name=\"power\" value=\"' + str(P) + '\" valueunit=\"W\" /></SmartMeter></MyHomePower>')
 
-def pm_simulator(sensor_delay):
+def pm_simulator(sens_delay):
     global current_power
-    delay = sensor_delay*2
+    delay = sens_delay * 2
     while True:
         q = json.loads(queryData())
         dt = datetime.today()
@@ -158,11 +158,27 @@ def list_timediff(ts, sec):
     result = listData_timefilter(diff)
     return str(result)
 
+def set_multiline(vals: list) -> str:
+    height = 380
+    length = 600
+    step = int(length / len(vals))
+    counter = 0
+    valstr = ""
+    for i in range(len(vals)):
+        power = height - int(sqrt(vals[i]["power"])*2.5)
+        valstr += "{},{} ".format(counter, power)
+        counter += step
+    return valstr
+
 @app.route('/')
 def home():
     currentvalues = json.loads(queryData())
     ts = datetime.now()
-    values_1h = json.loads(list_timediff(ts, 60))
+    values_1m = json.loads(list_timediff(ts, 60))
+    values_15m = json.loads(list_timediff(ts, 900))
+    minute_line = set_multiline(values_1m)
+    quarter_line = set_multiline(values_15m)
+    print(minute_line)
     if current_power <= 500:
         currentlevel = "low"
     elif current_power <= 2000:
@@ -178,8 +194,8 @@ def home():
     else:
         currentlevel = "high"
     """
-    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel, values_1h=values_1h,
-                           current_power=current_power)
+    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel, values_1m=values_1m,
+                           current_power=current_power, minute_line=minute_line, quarter_line=quarter_line)
 
 @app.route('/test/<command>')
 def test(command):
