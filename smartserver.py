@@ -3,10 +3,12 @@
 # Python code to read values from Smart Meter via SML (smart message language)
 # last mod: Thomas Ludwig, 2020-05-22 onto EMH ED300L
 import binascii
+import random
 from datetime import *
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 import json
+from math import ceil, sqrt
 import platform
 import pprint
 # import sys
@@ -19,9 +21,9 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///values.db'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///power.db'
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'connect_args': {'check_same_thread': False}}
 db = SQLAlchemy(app)
 sensor_delay = 5    # sesor read delay in seconds
-global current_power
 current_power = 0
 
 class PowerLog(db.Model):
@@ -57,6 +59,22 @@ def writexml(t, W1, W2, P):
                     <data name=\"energy2\" value=\"' + str(W2) + '\" valueunit=\"Wh\" />\
                     <data name=\"power\" value=\"' + str(P) + '\" valueunit=\"W\" /></SmartMeter></MyHomePower>')
 
+def pm_simulator(sens_delay):
+    global current_power
+    delay = sens_delay * 2
+    while True:
+        q = json.loads(queryData())
+        dt = datetime.today()
+        rand = random.random()
+        power = ceil(rand*1000)
+        current_power = power
+        energy1 = q["energy1"] + power/1000
+        energy2 = q["energy2"] + power/1000
+        pl = PowerLog(datetime=dt, timestamp=dt, energy1=energy1, energy2=energy2, power=power)
+        db.session.add(pl)
+        db.session.commit()
+        time.sleep(delay)
+
 
 def powermeter(sens_delay):
     global current_power
@@ -75,7 +93,7 @@ def powermeter(sens_delay):
     while True:
         if db_write_level == 1:
             db_write_level = 0
-        else: db_write_level = 0
+        else: db_write_level = 1
 
         char_bin = port.read()
         char = binascii.hexlify(char_bin)
@@ -135,16 +153,32 @@ def listData_timefilter(filt):
     return valrange
 
 def list_timediff(ts, sec):
-    # diff = datetime.now() - timedelta(seconds=sec)
-    diff = datetime(2020, 6, 22, 19, 33, 0)
+    diff = datetime.now() - timedelta(seconds=sec)
+    # diff = datetime(2020, 6, 22, 10, 53, 0)
     result = listData_timefilter(diff)
     return str(result)
+
+def set_multiline(vals: list) -> str:
+    height = 380
+    length = 600
+    step = int(length / len(vals))
+    counter = 0
+    valstr = ""
+    for i in range(len(vals)):
+        power = height - int(sqrt(vals[i]["power"])*2.5)
+        valstr += "{},{} ".format(counter, power)
+        counter += step
+    return valstr
 
 @app.route('/')
 def home():
     currentvalues = json.loads(queryData())
     ts = datetime.now()
-    values_1h = json.loads(list_timediff(ts, 60))
+    values_1m = json.loads(list_timediff(ts, 60))
+    values_15m = json.loads(list_timediff(ts, 900))
+    minute_line = set_multiline(values_1m)
+    quarter_line = set_multiline(values_15m)
+    print(minute_line)
     if current_power <= 500:
         currentlevel = "low"
     elif current_power <= 2000:
@@ -160,13 +194,17 @@ def home():
     else:
         currentlevel = "high"
     """
-    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel, values_1h=values_1h,
-                           current_power=current_power)
+    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel, values_1m=values_1m,
+                           current_power=current_power, minute_line=minute_line, quarter_line=quarter_line)
 
 @app.route('/test/<command>')
 def test(command):
     if command == "listdb":
         answer = db.session.query(PowerLog).all()
+        return answer
+    elif command == "val1h":
+        ts = datetime.now()
+        answer = list_timediff(ts, 60)
         return answer
 
 
@@ -174,9 +212,12 @@ def test(command):
 def main():
     if platform.system() == "Linux":
        # powermeter()
-       t1 = Thread(target=powermeter, args=sensor_delay)
+       t1 = Thread(target=powermeter, args=[sensor_delay,])
        t1.start()
-    app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=True)
+    else:
+       t1 = Thread(target=pm_simulator, args=[sensor_delay, ])
+       t1.start()
+    app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=True)
 
 
 if __name__ == "__main__":
