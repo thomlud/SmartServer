@@ -23,8 +23,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///power.db'
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'connect_args': {'check_same_thread': False}}
 db = SQLAlchemy(app)
-sensor_delay = 5    # sesor read delay in seconds
+sensor_delay = 5    # sensor read delay in seconds
 current_power = 0
+
 
 class PowerLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -35,7 +36,7 @@ class PowerLog(db.Model):
     power = db.Column(db.Float, nullable=False)
     
     def __init__(self, datetime, timestamp, energy1, energy2, power):
-        self.timestamp = timestamp
+        # self.timestamp = timestamp
         self.datetime = datetime
         self.energy1 = energy1
         self.energy2 = energy2
@@ -44,8 +45,25 @@ class PowerLog(db.Model):
     def __repr__(self):
         answer = json.dumps({"id": self.id, "datetime": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
                              "timestamp": self.timestamp, "energy1": self.energy1, "energy2": self.energy2,
-                             "power": self.power}, indent=4)
+                             "power": self.power})
         return answer
+
+class MinuteTable(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    datetime = db.Column(db.DateTime, nullable=False)
+    energy1 = db.Column(db.Float, nullable=False)
+    energy2 = db.Column(db.Float, nullable=False)
+
+    def __init__(self, datetime, energy1, energy2):
+        self.datetime = datetime
+        self.energy1 = energy1
+        self.energy2 = energy2
+
+    def __repr__(self):
+        answer = json.dumps({"id": self.id, "datetime": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                             "energy1": self.energy1, "energy2": self.energy2})
+        return answer
+
 
 db.create_all()
 
@@ -63,7 +81,11 @@ def pm_simulator(sens_delay):
     global current_power
     delay = sens_delay * 2
     while True:
-        q = json.loads(queryData())
+        v = queryData()
+        if not v == 'None':
+            q = json.loads(v)
+        else:
+            q = {"energy1": 1110, "energy2": 2220}
         dt = datetime.today()
         rand = random.random()
         power = ceil(rand*1000)
@@ -93,7 +115,8 @@ def powermeter(sens_delay):
     while True:
         if db_write_level == 1:
             db_write_level = 0
-        else: db_write_level = 1
+        else:
+            db_write_level = 1
 
         char_bin = port.read()
         char = binascii.hexlify(char_bin)
