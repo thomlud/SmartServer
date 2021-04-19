@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+
+<div class="card">
+  <h3 class="card-header text-center font-weight-bold text-uppercase py-4">Power Chart</h3>
+  <div class="card-body">
+    <!-- Navigation Tabs Power Charts-->
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <a class="nav-link active" id="t15min-tab" data-toggle="tab" href="#t15min" role="tab" aria-controls="home" aria-selected="true">15min</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a class="nav-link" id="t30min-tab" data-toggle="tab" href="#t30min" role="tab" aria-controls="profile" aria-selected="false">30min</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a class="nav-link" id="t60min-tab" data-toggle="tab" href="#t60min" role="tab" aria-controls="contact" aria-selected="false">60min</a>
+      </li>
+    </ul>
+
+    <!-- POWER CHART AREAS -->
+    <div class="tab-content" id="myTabContent">
+
+        <div class="tab-pane fade show active" id="t15min" role="tabpanel" aria-labelledby="home-tab">
+        <!-- CURRENT QUARTER HOUR CHART-->
+        <svg width="800" height="340" viewbox="500 0 800 300">
+          <title id="title15">Current hour review</title>
+        <!-- <g id="xGrid">
+          <text class="chart-text" x="0" y="10">Verbrauch</text>
+          <line class="chart-grid" x1="2" x2="2" y1="0" y2="371"></line>
+        </g> -->
+        <g id="yGrid">
+          <text class="chart-text" x="10" y="5">Current Power</text>
+          <line class="chart-grid" x1="0" x2="800" y1="300" y2="300"></line>
+        </g>
+        <g class="chart-grid">
+           <line id="top" x1="0" y1="17" x2="800" y2="17" />
+            <line id="top" x1="0" y1="100" x2="800" y2="100" />
+            <line id="top" x1="0" y1="160" x2="800" y2="160" />
+            <line id="top" x1="0" y1="211" x2="800" y2="211" />
+            <line id="top" x1="0" y1="237" x2="800" y2="237" />
+            <line id="top" x1="0" y1="255" x2="800" y2="255" />
+            <line id="top" x1="0" y1="272" x2="800" y2="270" />
+            <line id="top" x1="0" y1="285" x2="800" y2="285" />
+            <line id="top" x1="0" y1="300" x2="800" y2="300" />
+        </g>
+
+        <g class="chart-text">
+          <text x="760" y="5">W/h</text>
+          <text x="755" y="32">20.000</text>
+          <text x="755" y="118">15.000</text>
+          <text x="755" y="180">10.000</text>
+          <text x="765" y="228">5.000</text>
+          <text x="765" y="250">1.000</text>
+          <text x="775" y="266">500</text>
+          <text x="775" y="282">200</text>
+          <text x="775" y="296">100</text>
+        </g>
+
+        <g class="chart-text">
+          {% for line in cpl %}
+            {% if loop.index0 in (0,5,10,15,20,25,30,35,40,45,50,55,60) %}
+                <text x="{{800 / loop.length * loop.index0}}" y="315">{{ line.time }}</text>
+            {% else %}
+                <text x="{{800 / loop.length * loop.index0}}" y="315">.</text>
+            {% endif %}
+          {% endfor %}
+        </g>
+
+        <polyline style="stroke: #306f91; stroke-width: 4"
+                  fill="none" id="PWR" points="{{power_line}}" />
+        </svg>
+      </div>
+
+      <div class="tab-pane fade" id="t30min" role="tabpanel" aria-labelledby="profile-tab">
+        <!-- CURRENT HALF HOUR CHART-->
+        <svg width="800" height="340" viewbox="400 0 800 300">
+          <title id="title30">Current hour review</title>
+        <!-- <g id="xGrid">
+          <text class="chart-text" x="0" y="10">Verbrauch</text>
+          <line class="chart-grid" x1="2" x2="2" y1="0" y2="371"></line>
+        </g> -->
+        <g id="yGrid">
+          <text class="chart-text" x="10" y="5">Current Power</text>
+          <line class="chart-grid" x1="0" x2="800" y1="300" y2="300"></line>
+        </g>
+        <g class="chart-grid">
+           <line id="top" x1="0" y1="17" x2="800" y2="17" />
+            <line id="top" x1="0" y1="100" x2="800" y2="100" />
+            <line id="top" x1="0" y1="160" x2="800" y2="160" />
+            <line id="top" x1="0" y1="211" x2="800" y2="211" />
+            <line id="top" x1="0" y1="237" x2="800" y2="237" />
+            <line id="top" x1="0" y1="255" x2="800" y2="255" />
+            <line id="top" x1="0" y1="272" x2="800" y2="270" />
+            <line id="top" x1="0" y1="285" x2="800" y2="285" />
+            <line id="top" x1="0" y1="300" x2="800" y2="300" />
+        </g>
+
+        <g class="chart-text">
+          <text x="760" y="5">W/h</text>
+          <text x="755" y="32">20.000</text>
+          <text x="755" y="118">15.000</text>
+          <text x="755" y="180">10.000</text>
+          <text x="765" y="228">5.000</text>
+          <text x="765" y="250">1.000</text>
+          <text x="775" y="266">500</text>
+          <text x="775" y="282">200</text>
+          <text x="775" y="296">100</text>
+        </g>
+
+        <g class="chart-text">
+          {% for line in cpl %}
+            {% if loop.index0 in (0,5,10,15,20,25,30,35,40,45,50,55,60) %}
+                <text x="{{800 / loop.length * loop.index0}}" y="315">{{ line.time }}</text>
+            {% else %}
+                <text x="{{800 / loop.length * loop.index0}}" y="315">.</text>
+            {% endif %}
+          {% endfor %}
+        </g>
+
+        <polyline style="stroke: #306f91; stroke-width: 4"
+                  fill="none" id="PWR" points="{{power_line}}" />
+        </svg>
+      </div>
+
+      <div class="tab-pane fade" id="t60min" role="tabpanel" aria-labelledby="contact-tab">
+        <!-- CURRENT HOUR CHART-->
+        <svg width="800" height="340" viewbox="0 0 800 300">
+          <title id="title">Current hour review</title>
+        <!-- <g id="xGrid">
+          <text class="chart-text" x="0" y="10">Verbrauch</text>
+          <line class="chart-grid" x1="2" x2="2" y1="0" y2="371"></line>
+        </g> -->
+        <g id="yGrid">
+          <text class="chart-text" x="300" y="5">Current Power</text>
+          <line class="chart-grid" x1="0" x2="800" y1="300" y2="300"></line>
+        </g>
+        <g class="chart-grid">
+           <line id="top" x1="0" y1="17" x2="800" y2="17" />
+            <line id="top" x1="0" y1="100" x2="800" y2="100" />
+            <line id="top" x1="0" y1="160" x2="800" y2="160" />
+            <line id="top" x1="0" y1="211" x2="800" y2="211" />
+            <line id="top" x1="0" y1="237" x2="800" y2="237" />
+            <line id="top" x1="0" y1="255" x2="800" y2="255" />
+            <line id="top" x1="0" y1="272" x2="800" y2="270" />
+            <line id="top" x1="0" y1="285" x2="800" y2="285" />
+            <line id="top" x1="0" y1="300" x2="800" y2="300" />
+        </g>
+
+        <g class="chart-text">
+          <text x="760" y="5">W/h</text>
+          <text x="755" y="32">20.000</text>
+          <text x="755" y="118">15.000</text>
+          <text x="755" y="180">10.000</text>
+          <text x="765" y="228">5.000</text>
+          <text x="765" y="250">1.000</text>
+          <text x="775" y="266">500</text>
+          <text x="775" y="282">200</text>
+          <text x="775" y="296">100</text>
+        </g>
+
+        <g class="chart-text">
+          {% for line in cpl %}
+            {% if loop.index0 in (0,5,10,15,20,25,30,35,40,45,50,55,60) %}
+                <text x="{{800 / loop.length * loop.index0}}" y="315">{{ line.time }}</text>
+            {% else %}
+                <text x="{{800 / loop.length * loop.index0}}" y="315">.</text>
+            {% endif %}
+          {% endfor %}
+        </g>
+
+        <polyline style="stroke: #306f91; stroke-width: 4"
+                  fill="none" id="PWR" points="{{power_line}}" />
+        </svg>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+        <!-- VIERTEL-STUNDE CHART
+            <svg width="600" height="420" viewbox="0 0 600 400">
+              <title>Viertel-Stunde Übersicht</title>
+              <text class="chart-text" x="300" y="10">Viertel-Stunde Übersicht</text>
+              <line class="chart-base" x1="0" x2="600" y1="380" y2="380"></line>
+                <g class="chart-grid">
+                   <line id="top" x1="0" y1="26" x2="600" y2="26" />
+                    <line id="top" x1="0" y1="74" x2="600" y2="74" />
+                    <line id="top" x1="0" y1="130" x2="600" y2="130" />
+                    <line id="top" x1="0" y1="203" x2="600" y2="203" />
+                    <line id="top" x1="0" y1="301" x2="600" y2="301" />
+                    <line id="top" x1="0" y1="324" x2="600" y2="324" />
+                    <line id="top" x1="0" y1="345" x2="600" y2="345" />
+                </g>
+                <g class="chart-text">
+                  <text x="40" y="400">-15</text>
+                  <text x="40" y="400">-12</text>
+                  <text x="100" y="400">-9</text>
+                  <text x="200" y="400">-6</text>
+                  <text x="300" y="400">-3</text>
+                  <text x="550" y="400">Just</text>
+                </g>
+                <g class="chart-text">
+                  <text x="535" y="40">20.000 W/h</text>
+                  <text x="535" y="90">15.000 W/h</text>
+                  <text x="535" y="145">10.000 W/h</text>
+                  <text x="535" y="220">5.000 W/h</text>
+                  <text x="535" y="315">1.000 W/h</text>
+                  <text x="535" y="340">500 W/h</text>
+                  <text x="535" y="360">200 W/h</text>
+                </g>
+            <polyline style="stroke: #306f91; stroke-width: 3"
+                      fill="none" id="PWR" points="{{quarter_line}}" />
+            </svg>-->

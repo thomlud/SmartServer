@@ -5,7 +5,7 @@
 import binascii
 import random
 from datetime import *
-from flask import Flask, render_template
+from flask import Flask, render_template, request as freq
 from flask_sqlalchemy import SQLAlchemy
 import json
 from math import ceil, sqrt
@@ -25,28 +25,25 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'connect_args': {'check_same_thread':
 db = SQLAlchemy(app)
 sensor_delay = 5    # sensor read delay in seconds
 current_power = 0
-
+log_delay_minutes = 1
+screen_resolution = "low"
 
 class PowerLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    datetime = db.Column(db.DateTime, nullable=False)
-    timestamp = db.Column(db.String, nullable=True)
+    timestamp = db.Column(db.String, nullable=False)
     energy1 = db.Column(db.Float, nullable=False)
     energy2 = db.Column(db.Float, nullable=False)
-    power = db.Column(db.Float, nullable=False)
-    
-    def __init__(self, datetime, timestamp, energy1, energy2, power):
-        # self.timestamp = timestamp
-        self.datetime = datetime
+
+    def __init__(self, timestamp, energy1, energy2):
+        self.timestamp = timestamp
         self.energy1 = energy1
         self.energy2 = energy2
-        self.power = power
         
     def __repr__(self):
-        answer = json.dumps({"id": self.id, "datetime": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                             "timestamp": self.timestamp, "energy1": self.energy1, "energy2": self.energy2,
-                             "power": self.power})
+        answer = json.dumps({"id": self.id, "datetime": self.timestamp,
+                             "energy1": self.energy1, "energy2": self.energy2})
         return answer
+
 
 class MinuteTable(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -64,9 +61,41 @@ class MinuteTable(db.Model):
                              "energy1": self.energy1, "energy2": self.energy2})
         return answer
 
-
 db.create_all()
 
+
+class DataHandler:
+    def __init__(self):
+        self.current_power_list = []
+        self.last_cpl_timestamp = datetime(2000, 1, 1, 0, 0, 0)
+        if self.query_last_log():
+            self.last_db_timestamp = datetime.fromisoformat(self.query_last_log().timestamp)
+        else:
+            self.last_db_timestamp = datetime(2000, 1, 1, 0, 0, 0)
+
+    def append_current_power(self, ts, power):
+        if ts - timedelta(minutes=1) > self.last_cpl_timestamp:
+            if len(self.current_power_list) > 60:
+                self.current_power_list.pop(0)
+            h = ts.strftime("%H:%M")
+            self.current_power_list.append({"time": h, "power": power})
+            self.last_cpl_timestamp = ts
+
+    def get_curr_power_list(self):
+        return self.current_power_list
+
+    def query_last_log(self):
+        vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
+        return vals
+
+    def append_log(self, ts, energy1, energy2, delay=15):
+        if ts - timedelta(minutes=delay) > self.last_db_timestamp:
+            pl = PowerLog(timestamp=ts.isoformat(), energy1=energy1, energy2=energy2)
+            db.session.add(pl)
+            db.session.commit()
+            self.last_db_timestamp = ts
+
+dh = DataHandler()
 
 def writexml(t, W1, W2, P):
     """ writes  """
@@ -92,11 +121,9 @@ def pm_simulator(sens_delay):
         current_power = power
         energy1 = q["energy1"] + power/1000
         energy2 = q["energy2"] + power/1000
-        pl = PowerLog(datetime=dt, timestamp=dt, energy1=energy1, energy2=energy2, power=power)
-        db.session.add(pl)
-        db.session.commit()
+        dh.append_current_power(ts=dt, power=power)
+        dh.append_log(ts=dt, energy1=energy1, energy2=energy2, delay=log_delay_minutes)
         time.sleep(delay)
-
 
 def powermeter(sens_delay):
     global current_power
@@ -159,31 +186,29 @@ def powermeter(sens_delay):
             # writexml(timestamp, energy1, energy2, power)
             current_power = power
             if db_write_level == 1:
-                pl = PowerLog(datetime=dt, timestamp=timestamp, energy1=energy1, energy2=energy2, power=power)
-                db.session.add(pl)
-                db.session.commit()
+                dh.append_current_power(ts=dt, power=power)
+                dh.append_log(datetime=dt, energy1=energy1, energy2=energy2, delay=log_delay_minutes)
             data = ''
             time.sleep(sens_delay)
-
 
 def queryData():
     vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
     return str(vals)
 
-def listData_timefilter(filt):
-    valrange = db.session.query(PowerLog).filter(PowerLog.datetime >= filt).all()
+def _listData_timefilter(filt):
+    valrange = db.session.query(PowerLog).filter(PowerLog.timestamp >= filt).all()
     print(str(valrange))
     return valrange
 
 def list_timediff(ts, sec):
     diff = datetime.now() - timedelta(seconds=sec)
     # diff = datetime(2020, 6, 22, 10, 53, 0)
-    result = listData_timefilter(diff)
+    result = _listData_timefilter(diff)
     return str(result)
 
 def set_multiline(vals: list) -> str:
-    height = 380
-    length = 600
+    height = 300
+    length = 800
     if len(vals) > 0:
         num = length / len(vals)
         step = int(num)
@@ -192,20 +217,24 @@ def set_multiline(vals: list) -> str:
     counter = 0
     valstr = ""
     for i in range(len(vals)):
-        power = height - int(sqrt(vals[i]["power"])*2.5)
+        power = height - int(sqrt(vals[i]["power"])*2)
         valstr += "{},{} ".format(counter, power)
         counter += step
     return valstr
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def home():
+    content = freq.values
+    if content:
+        for item in content.items():
+            print(item)
     currentvalues = json.loads(queryData())
     ts = datetime.now()
-    values_1m = json.loads(list_timediff(ts, 60))
-    values_15m = json.loads(list_timediff(ts, 900))
-    minute_line = set_multiline(values_1m)
-    quarter_line = set_multiline(values_15m)
-    print(minute_line)
+    # values_1m = json.loads(list_timediff(ts, 60))
+    # values_15m = json.loads(list_timediff(ts, 900))
+    power_line = set_multiline(dh.get_curr_power_list())
+    # quarter_line = set_multiline(values_15m)
+    print(power_line)
     if current_power <= 500:
         currentlevel = "low"
     elif current_power <= 2000:
@@ -220,9 +249,16 @@ def home():
         currentlevel = "middle"
     else:
         currentlevel = "high"
-    """
+    
     return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel, values_1m=values_1m,
                            current_power=current_power, minute_line=minute_line, quarter_line=quarter_line)
+    """
+    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel,
+                           current_power=current_power, power_line=power_line, cpl=dh.get_curr_power_list())
+
+@app.route('/current')
+def current_use():
+    return json.dumps(dh.get_curr_power_list())
 
 @app.route('/test/<command>')
 def test(command):
