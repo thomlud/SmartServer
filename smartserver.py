@@ -25,7 +25,8 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'connect_args': {'check_same_thread':
 db = SQLAlchemy(app)
 sensor_delay = 5    # sensor read delay in seconds
 current_power = 0
-log_delay_minutes = 1
+current_dt = datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
+log_delay_minutes = 30
 screen_resolution = "low"
 
 class PowerLog(db.Model):
@@ -88,11 +89,12 @@ class DataHandler:
         vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
         return vals
 
-    def append_log(self, ts, energy1, energy2, delay=15):
-        if ts - timedelta(minutes=delay) > self.last_db_timestamp:
+    def append_log(self, ts, energy1, energy2, delay=30):
+        if ts - timedelta(minutes=delay) >= self.last_db_timestamp:
             pl = PowerLog(timestamp=ts.isoformat(), energy1=energy1, energy2=energy2)
             db.session.add(pl)
             db.session.commit()
+            print("db logged on %s" % ts.isoformat())
             self.last_db_timestamp = ts
 
 dh = DataHandler()
@@ -108,6 +110,7 @@ def writexml(t, W1, W2, P):
 
 def pm_simulator(sens_delay):
     global current_power
+    global current_dt
     delay = sens_delay * 2
     while True:
         v = queryData()
@@ -119,6 +122,7 @@ def pm_simulator(sens_delay):
         rand = random.random()
         power = ceil(rand*1000)
         current_power = power
+        current_dt = datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
         energy1 = q["energy1"] + power/1000
         energy2 = q["energy2"] + power/1000
         dh.append_current_power(ts=dt, power=power)
@@ -127,6 +131,7 @@ def pm_simulator(sens_delay):
 
 def powermeter(sens_delay):
     global current_power
+    global current_dt
     db_write_level = 1
     port = serial.Serial(
         port='/dev/ttyUSB0',
@@ -185,6 +190,7 @@ def powermeter(sens_delay):
                 result = result + ';' + str(power)
             # writexml(timestamp, energy1, energy2, power)
             current_power = power
+            current_dt = datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
             if db_write_level == 1:
                 if power:
                     dh.append_current_power(ts=dt, power=power)
@@ -245,7 +251,7 @@ def home():
         currentlevel = "high"
 
     return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel,
-                           current_power=current_power, power_line=power_line, cpl=dh.get_curr_power_list())
+                           current_power=current_power, current_dt=current_dt, power_line=power_line, cpl=dh.get_curr_power_list())
 
 @app.route('/current')
 def current_use():
