@@ -186,8 +186,10 @@ def powermeter(sens_delay):
             # writexml(timestamp, energy1, energy2, power)
             current_power = power
             if db_write_level == 1:
-                dh.append_current_power(ts=dt, power=power)
-                dh.append_log(datetime=dt, energy1=energy1, energy2=energy2, delay=log_delay_minutes)
+                if power:
+                    dh.append_current_power(ts=dt, power=power)
+                if energy1 and energy2:
+                    dh.append_log(ts=dt, energy1=energy1, energy2=energy2, delay=log_delay_minutes)
             data = ''
             time.sleep(sens_delay)
 
@@ -242,17 +244,6 @@ def home():
     else:
         currentlevel = "high"
 
-    """ # old version from database 
-    if currentvalues['power'] <= 500:
-        currentlevel = "low"
-    elif currentvalues['power'] <= 2000:
-        currentlevel = "middle"
-    else:
-        currentlevel = "high"
-    
-    return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel, values_1m=values_1m,
-                           current_power=current_power, minute_line=minute_line, quarter_line=quarter_line)
-    """
     return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel,
                            current_power=current_power, power_line=power_line, cpl=dh.get_curr_power_list())
 
