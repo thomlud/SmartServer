@@ -2,6 +2,8 @@
 <!-- current power descending -->
 <div class="card">
   <h4 class="card-header text-center font-weight-bold text-uppercase py-4">Power Chart</h4>
+
+</script>
   <div class="card-body">
     <!-- Navigation Tabs Power Charts-->
     <ul class="nav nav-tabs" id="myTab" role="tablist">
@@ -179,6 +181,16 @@
 
       </div>
 
+    </div>
+    <div class="card-footer">
+    <button class="btn" onclick="myFunction()" id="demo">Width</button>
+    <script>
+        function myFunction() {
+          var w = window.innerWidth;
+          var h = window.innerHeight;
+          document.getElementById("demo").innerHTML = "Width: " + w + "<br>Height: " + h;
+    }
+    </script>
     </div>
 
   </div>

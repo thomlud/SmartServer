@@ -9,9 +9,9 @@ from flask import Flask, render_template, request as freq
 from flask_sqlalchemy import SQLAlchemy
 import json
 from math import ceil, sqrt
+import numpy as np
+import matplotlib.pyplot as plt
 import platform
-import pprint
-# import sys
 import serial
 from threading import Thread
 import time
@@ -44,7 +44,6 @@ class PowerLog(db.Model):
         answer = json.dumps({"id": self.id, "datetime": self.timestamp,
                              "energy1": self.energy1, "energy2": self.energy2})
         return answer
-
 
 class MinuteTable(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -145,10 +144,10 @@ def powermeter(sens_delay):
     end = '1b1b1b1b1a'
     data = ''
     while True:
-        if db_write_level == 1:
+        ''' if db_write_level == 1:
             db_write_level = 0
-        else:
-            db_write_level = 1
+        else:'''
+        db_write_level = 1
 
         char_bin = port.read()
         char = binascii.hexlify(char_bin)
@@ -269,7 +268,7 @@ def test(command):
 
 
 
-def main():
+def run_app():
     if platform.system() == "Linux":
        # powermeter()
        t1 = Thread(target=powermeter, args=[sensor_delay,])
@@ -281,4 +280,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_app()

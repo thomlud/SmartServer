@@ -7,6 +7,8 @@ name = "pypi"
 Flask = "*"
 Flask-SQLAlchemy = "*"
 pyserial = "*"
+numpy = "*"
+matplotlib = "*"
 
 [dev-packages]
 
