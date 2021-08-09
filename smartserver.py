@@ -12,6 +12,7 @@ from math import ceil, sqrt
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import os
 import platform
 import serial
 from threading import Thread
@@ -336,13 +337,15 @@ def test(command):
 
 
 def run_app():
-    if platform.system() == "Linux":
-       # powermeter()
-       t1 = Thread(target=powermeter, args=[sensor_delay,])
-       t1.start()
+
+    if platform.system() == "Linux" and 'ttyUSB0' in os.listdir(os.environ('/dev')):
+        ''' dirname = os.environ['/dev']
+            objects = os.listdir(dirname)'''
+        t1 = Thread(target=powermeter, args=[sensor_delay,])
+        t1.start()
     else:
-       t1 = Thread(target=pm_simulator, args=[sensor_delay,])
-       t1.start()
+        t1 = Thread(target=pm_simulator, args=[sensor_delay,])
+        t1.start()
     app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=True)
 
 
