@@ -11,6 +11,7 @@ import json
 from math import ceil, sqrt
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import platform
 import serial
 from threading import Thread
@@ -88,8 +89,12 @@ class DataHandler:
         vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
         return vals
 
-    def append_log(self, ts, energy1, energy2, delay=30):
-        if ts - timedelta(minutes=delay) >= self.last_db_timestamp:
+    def query_loglist(self):
+        vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).all()
+        return vals
+
+    def append_log(self, ts, energy1, energy2, delay=29):
+        if ts - timedelta(minutes=delay) > self.last_db_timestamp:
             pl = PowerLog(timestamp=ts.isoformat(), energy1=energy1, energy2=energy2)
             db.session.add(pl)
             db.session.commit()
@@ -229,6 +234,68 @@ def set_multiline(vals: list) -> str:
         counter += step
     return valstr
 
+def get_last_72_values() -> list:
+    """ returns a list of the latest 72 lines
+        from db in form [datetime, nt, ht] """
+    val_list = []
+    lines = dh.query_loglist()
+    last = len(lines)
+    for line in lines:
+        if line.id >= last - 71:
+            dt = datetime.fromisoformat(line.timestamp)
+            nt = line.energy1
+            ht = line.energy2
+            val_list.append([dt, nt, ht])
+    return val_list
+
+def parse_list(val_list) -> list:
+    """ parses the list of power values into consumption
+        returns a list of 3 lists: datetime | used_nt | used_ht
+    """
+    timeList = []
+    ntList = []
+    htList = []
+    last_nt = 0
+    last_ht = 0
+    while val_list:
+        row = val_list.pop()
+        t, nt_val, ht_val = row
+        if not last_nt == 0 and not last_ht == 0:
+            used_nt = (nt_val - last_nt) * 1000
+            used_ht = (ht_val - last_ht) * 1000
+            timeList.append(t)
+            ntList.append(int(used_nt))
+            htList.append(int(used_ht))
+        last_nt = nt_val
+        last_ht = ht_val
+    usage_list = [timeList, ntList, htList]
+    return usage_list
+
+def plot_hourly_graph(value_list):
+    # vl = value_list
+    # vl = np.array(value_list)
+    vl = [np.array(value_list[0]), np.array(value_list[1]), np.array(value_list[2])]
+    fig, ax = plt.subplots()
+    ax.plot(vl[0], vl[1], 'r', vl[0], vl[2])  # plot-line
+    datemin = np.datetime64(vl[0][0], 'h')
+    datemax = np.datetime64(vl[0][-1], 'h') + np.timedelta64(1, 'h')
+    ax.set_xlim(datemin, datemax)
+
+    ax.xaxis.set_major_locator(mdates.HourLocator(interval=4))  # set x descriptions
+    ax.xaxis.set_minor_locator(mdates.HourLocator())    # set x separators
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M')) # set description format
+
+
+    ax.grid(True)   # set grid
+    fig.autofmt_xdate() # rotates x axis descriptors
+    plt.title('last 36h')
+    plt.ylabel('Verbrauch')
+    plt.savefig('hourly_graph.png')
+    # plt.show()
+
+values72 = parse_list(get_last_72_values())
+plot_hourly_graph(values72)
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     content = freq.values
@@ -274,10 +341,49 @@ def run_app():
        t1 = Thread(target=powermeter, args=[sensor_delay,])
        t1.start()
     else:
-       t1 = Thread(target=pm_simulator, args=[sensor_delay, ])
+       t1 = Thread(target=pm_simulator, args=[sensor_delay,])
        t1.start()
     app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=True)
 
 
 if __name__ == "__main__":
     run_app()
+
+"""import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.cbook as cbook
+
+# Load a numpy structured array from yahoo csv data with fields date, open,
+# close, volume, adj_close from the mpl-data/example directory.  This array
+# stores the date as an np.datetime64 with a day unit ('D') in the 'date'
+# column.
+data = cbook.get_sample_data('goog.npz', np_load=True)['price_data']
+
+fig, ax = plt.subplots()
+ax.plot('date', 'adj_close', data=data)
+
+# Major ticks every 6 months.
+fmt_half_year = mdates.MonthLocator(interval=6)
+ax.xaxis.set_major_locator(fmt_half_year)
+
+# Minor ticks every month.
+fmt_month = mdates.MonthLocator()
+ax.xaxis.set_minor_locator(fmt_month)
+
+# Text in the x axis will be displayed in 'YYYY-mm' format.
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+
+
+# Format the coords message box, i.e. the numbers displayed as the cursor moves
+# across the axes within the interactive GUI.
+ax.format_xdata = mdates.DateFormatter('%Y-%m')
+ax.format_ydata = lambda x: f'${x:.2f}'  # Format the price.
+ax.grid(True)
+
+# Rotates and right aligns the x labels, and moves the bottom of the
+# axes up to make room for them.
+fig.autofmt_xdate()
+
+plt.show()
+"""
