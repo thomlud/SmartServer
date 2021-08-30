@@ -4,8 +4,8 @@
 # last mod: Thomas Ludwig, 2020-05-22 onto EMH ED300L
 import binascii
 import random
-from datetime import *
-from flask import Flask, render_template, request as freq
+import datetime
+from flask import Flask, render_template, Response, request as freq
 from flask_sqlalchemy import SQLAlchemy
 import json
 from math import ceil, sqrt
@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import os
 import platform
+import queue
 import serial
 from threading import Thread
 import time
@@ -27,11 +28,79 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'connect_args': {'check_same_thread':
 db = SQLAlchemy(app)
 sensor_delay = 5    # sensor read delay in seconds
 current_power = 0
-current_dt = datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
+current_dt = datetime.datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
 log_delay_minutes = 30
 screen_resolution = "low"
 
+# # # SSE Function message announcer # # #
+class MessageAnnouncer:
+    """ listen() will be called by clients to receive notifications
+        announce() takes messages and announces them to listeners
+    """
+    def __init__(self):
+        self.listeners = []
+
+    def listen(self):
+        q = queue.Queue(maxsize=5)
+        self.listeners.append(q)
+        return q
+
+    def announce(self, msg):
+        for i in reversed(range(len(self.listeners))):
+            try:
+                self.listeners[i].put_nowait(msg)
+            except queue.Full:
+                del self.listeners[i]
+
+
+announcer = MessageAnnouncer()
+
+def format_sse(data: str, event=None) -> str:
+    msg = f'data: {data}\n\n'
+    if event is not None:
+        msg = f'event: {event}\n{msg}'
+    return msg
+
+
+def convTime(ts) -> dict:
+    """
+    :param ts: Timestamp in int or iso-string
+    :return: dict in form {"int":int , "str": str, "dt": dt}
+
+    Convert a timestamp
+    """
+    if type(ts) == int:
+        dt = datetime.datetime.fromtimestamp(ts)
+    elif type(ts) == str:
+        dt = datetime.datetime.fromisoformat(ts)
+    elif type(ts) == datetime.datetime:
+        dt = ts
+    else:
+        return None
+    answer = {"int": dt.timestamp(), "str": dt.isoformat(), "dt": dt}
+    return answer
+
 class PowerLog(db.Model):
+    __tablename__ = 'power_log'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.String, nullable=False)
+    energy1 = db.Column(db.Float, nullable=False)
+    energy2 = db.Column(db.Float, nullable=False)
+    power = db.Column(db.Float, nullable=True)
+
+    def __init__(self, timestamp, energy1, energy2, power):
+        self.timestamp = timestamp
+        self.energy1 = energy1
+        self.energy2 = energy2
+        self.power = power
+        
+    def __repr__(self):
+        answer = json.dumps({"id": self.id, "datetime": self.timestamp,
+                             "energy1": self.energy1, "energy2": self.energy2, "power": self.power})
+        return answer
+
+class MinuteTable(db.Model):
+    __tablename__ = 'minute_table'
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.String, nullable=False)
     energy1 = db.Column(db.Float, nullable=False)
@@ -41,77 +110,135 @@ class PowerLog(db.Model):
         self.timestamp = timestamp
         self.energy1 = energy1
         self.energy2 = energy2
-        
+
     def __repr__(self):
         answer = json.dumps({"id": self.id, "datetime": self.timestamp,
                              "energy1": self.energy1, "energy2": self.energy2})
         return answer
 
-class MinuteTable(db.Model):
+class HourTable(db.Model):
+    __tablename__ = 'hour_table'
     id = db.Column(db.Integer, primary_key=True)
-    datetime = db.Column(db.DateTime, nullable=False)
+    timestamp = db.Column(db.String, nullable=False)
     energy1 = db.Column(db.Float, nullable=False)
     energy2 = db.Column(db.Float, nullable=False)
 
-    def __init__(self, datetime, energy1, energy2):
-        self.datetime = datetime
+    def __init__(self, timestamp, energy1, energy2):
+        self.timestamp = timestamp
         self.energy1 = energy1
         self.energy2 = energy2
 
     def __repr__(self):
-        answer = json.dumps({"id": self.id, "datetime": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        answer = json.dumps({"id": self.id, "timestamp": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
                              "energy1": self.energy1, "energy2": self.energy2})
         return answer
 
+class DayTable(db.Model):
+    __tablename__ = 'day_table'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.String, nullable=False)
+    energy1 = db.Column(db.Float, nullable=False)
+    energy2 = db.Column(db.Float, nullable=False)
+
+    def __init__(self, timestamp, energy1, energy2):
+        self.timestamp = timestamp
+        self.energy1 = energy1
+        self.energy2 = energy2
+
+    def __repr__(self):
+        answer = json.dumps({"id": self.id, "timestamp": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                             "energy1": self.energy1, "energy2": self.energy2})
+        return answer
+
+class MonthTable(db.Model):
+    __tablename__ = 'month_table'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.String, nullable=False)
+    energy1 = db.Column(db.Float, nullable=False)
+    energy2 = db.Column(db.Float, nullable=False)
+
+    def __init__(self, timestamp, energy1, energy2):
+        self.timestamp = timestamp
+        self.energy1 = energy1
+        self.energy2 = energy2
+
+    def __repr__(self):
+        answer = json.dumps({"id": self.id, "timestamp": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                             "energy1": self.energy1, "energy2": self.energy2})
+        return answer
+
+
 db.create_all()
 
-
-class DataHandler:
+class DbManager:
     def __init__(self):
+        self.last_ts = datetime.datetime.now()
         self.current_power_list = []
-        self.last_cpl_timestamp = datetime(2000, 1, 1, 0, 0, 0)
-        if self.query_last_log():
-            self.last_db_timestamp = datetime.fromisoformat(self.query_last_log().timestamp)
-        else:
-            self.last_db_timestamp = datetime(2000, 1, 1, 0, 0, 0)
+        self.lastMinuteRow = None
+        self.lastHourRow = None
+        self.lastDayRow = None
+        self.lastMonthRow = None
+        self.update_values()
+
+    def update_values(self):
+        self.lastMinuteRow = self.get_last_db_value(MinuteTable)
+        self.lastHourRow = self.get_last_db_value(HourTable)
+        self.lastDayRow = self.get_last_db_value(DayTable)
+        self.lastMonthRow = self.get_last_db_value(MonthTable)
+
+    def get_last_db_value(self, table):
+        answer = db.session.query(table).order_by(table.id.desc()).first()
+        return answer
+
+    def append_data(self, ts, energy1, energy2, power=0):
+        newLog = PowerLog(timestamp=ts.isoformat(), energy1=energy1, energy2=energy2, power=power)
+        db.session.add(newLog)
+        print("Powerlog logged on %s" % ts.isoformat())
+        logtime = convTime(ts)["dt"]
+        try:
+            if logtime - datetime.timedelta(minutes=1) >= convTime(self.lastMinuteRow.timestamp)["dt"]:
+                new = MinuteTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
+                db.session.add(new)
+                print("MinuteTable logged on %s" % ts.isoformat())
+                if logtime - datetime.timedelta(minutes=60) >= convTime(self.lastHourRow.timestamp)["dt"]:
+                    new = HourTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
+                    db.session.add(new)
+                    print("HourTable logged on %s" % ts.isoformat())
+                    if logtime - datetime.timedelta(day=1) >= convTime(self.lastDayRow.timestamp)["dt"]:
+                        new = DayTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
+                        db.session.add(new)
+                        print("DayTable logged on %s" % ts.isoformat())
+                        if logtime - datetime.timedelta(month=1) >= convTime(self.lastMonthRow.timestamp)["dt"]:
+                            new = MonthTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
+                            db.session.add(new)
+                            print("MonthTable logged on %s" % ts.isoformat())
+                db.session.commit()
+                self.update_values()
+        except:
+            new = MinuteTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
+            db.session.add(new)
+            new = HourTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
+            db.session.add(new)
+            new = DayTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
+            db.session.add(new)
+            new = MonthTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
+            db.session.add(new)
+            db.session.commit()
+            self.update_values()
 
     def append_current_power(self, ts, power):
-        if ts - timedelta(minutes=1) > self.last_cpl_timestamp:
+        if ts - datetime.timedelta(minutes=1) > self.last_ts:
             if len(self.current_power_list) > 60:
                 self.current_power_list.pop(0)
             h = ts.strftime("%H:%M")
             self.current_power_list.append({"time": h, "power": power})
-            self.last_cpl_timestamp = ts
+            self.last_ts = ts
 
     def get_curr_power_list(self):
         return self.current_power_list
 
-    def query_last_log(self):
-        vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
-        return vals
 
-    def query_loglist(self):
-        vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).all()
-        return vals
-
-    def append_log(self, ts, energy1, energy2, delay=29):
-        if ts - timedelta(minutes=delay) > self.last_db_timestamp:
-            pl = PowerLog(timestamp=ts.isoformat(), energy1=energy1, energy2=energy2)
-            db.session.add(pl)
-            db.session.commit()
-            print("db logged on %s" % ts.isoformat())
-            self.last_db_timestamp = ts
-
-dh = DataHandler()
-
-def writexml(t, W1, W2, P):
-    """ writes  """
-    with open('SmartMeter.xml', 'w') as file:
-        file.write('<MyHomePower><SmartMeter>\
-                    <data name=\"timestamp\" value=\"' + t + '\"  valueunit=\"YYYY-MM-DD hh:mm:ss\" />\
-                    <data name=\"energy1\" value=\"' + str(W1) + '\" valueunit=\"Wh\" />\
-                    <data name=\"energy2\" value=\"' + str(W2) + '\" valueunit=\"Wh\" />\
-                    <data name=\"power\" value=\"' + str(P) + '\" valueunit=\"W\" /></SmartMeter></MyHomePower>')
+dbm = DbManager()
 
 def pm_simulator(sens_delay):
     global current_power
@@ -123,15 +250,21 @@ def pm_simulator(sens_delay):
             q = json.loads(v)
         else:
             q = {"energy1": 1110, "energy2": 2220}
-        dt = datetime.today()
+        dt = datetime.datetime.today()
         rand = random.random()
         power = ceil(rand*1000)
         current_power = power
-        current_dt = datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
+        current_dt = datetime.datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
         energy1 = q["energy1"] + power/1000
         energy2 = q["energy2"] + power/1000
-        dh.append_current_power(ts=dt, power=power)
-        dh.append_log(ts=dt, energy1=energy1, energy2=energy2, delay=log_delay_minutes)
+        msg = format_sse(data=str(current_power))
+        # msg = format_sse(data="reload")
+        announcer.announce(msg=format_sse(data="reload"))
+        print(msg)
+
+        dbm.append_current_power(ts=dt, power=power)
+        dbm.append_data(dt, energy1, energy2, power)
+        # dh.append_log(ts=dt, energy1=energy1, energy2=energy2, delay=log_delay_minutes)
         time.sleep(delay)
 
 def powermeter(sens_delay):
@@ -196,28 +329,29 @@ def powermeter(sens_delay):
             # writexml(timestamp, energy1, energy2, power)
             current_power = power
             current_dt = datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
-            if db_write_level == 1:
-                if power:
-                    dh.append_current_power(ts=dt, power=power)
-                if energy1 and energy2:
-                    dh.append_log(ts=dt, energy1=energy1, energy2=energy2, delay=log_delay_minutes)
-            data = ''
+            msg = format_sse(data=str(current_power))
+            # msg = format_sse(data="reload")
+            announcer.announce(msg=format_sse(data="reload"))
+            print(msg)
+            dbm.append_current_power(ts=dt, power=power)
+            dbm.append_data(dt, energy1, energy2, power)
             time.sleep(sens_delay)
 
 def queryData():
     vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
     return str(vals)
 
-def _listData_timefilter(filt):
+'''def _listData_timefilter(filt):
     valrange = db.session.query(PowerLog).filter(PowerLog.timestamp >= filt).all()
     print(str(valrange))
     return valrange
 
 def list_timediff(ts, sec):
-    diff = datetime.now() - timedelta(seconds=sec)
+    diff = datetime.datetime.now() - datetime.timedelta(seconds=sec)
     # diff = datetime(2020, 6, 22, 10, 53, 0)
     result = _listData_timefilter(diff)
     return str(result)
+'''
 
 def set_multiline(vals: list) -> str:
     height = 300
@@ -235,7 +369,7 @@ def set_multiline(vals: list) -> str:
         counter += step
     return valstr
 
-def get_last_72_values() -> list:
+'''def get_last_72_values() -> list:
     """ returns a list of the latest 72 lines
         from db in form [datetime, nt, ht] """
     val_list = []
@@ -248,8 +382,9 @@ def get_last_72_values() -> list:
             ht = line.energy2
             val_list.append([dt, nt, ht])
     return val_list
+'''
 
-def parse_list(val_list) -> list:
+def _parse_list(val_list) -> list:
     """ parses the list of power values into consumption
         returns a list of 3 lists: datetime | used_nt | used_ht
     """
@@ -276,6 +411,7 @@ def plot_hourly_graph(value_list):
     # vl = value_list
     # vl = np.array(value_list)
     vl = [np.array(value_list[0]), np.array(value_list[1]), np.array(value_list[2])]
+
     fig, ax = plt.subplots()
     ax.plot(vl[0], vl[1], 'r', vl[0], vl[2])  # plot-line
     datemin = np.datetime64(vl[0][0], 'h')
@@ -286,7 +422,6 @@ def plot_hourly_graph(value_list):
     ax.xaxis.set_minor_locator(mdates.HourLocator())    # set x separators
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M')) # set description format
 
-
     ax.grid(True)   # set grid
     fig.autofmt_xdate() # rotates x axis descriptors
     plt.title('last 36h')
@@ -294,8 +429,17 @@ def plot_hourly_graph(value_list):
     plt.savefig('hourly_graph.png')
     # plt.show()
 
-values72 = parse_list(get_last_72_values())
-plot_hourly_graph(values72)
+# values72 = parse_list(get_last_72_values())
+# plot_hourly_graph(values72)
+
+@app.route('/listen', methods=['GET'])
+def listen():
+    def stream():
+        messages = announcer.listen()  # returns a queue.Queue
+        while True:
+            msg = messages.get()  # blocks until a new message arrives
+            yield msg
+    return Response(stream(), mimetype='text/event-stream')
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
@@ -304,11 +448,8 @@ def home():
         for item in content.items():
             print(item)
     currentvalues = json.loads(queryData())
-    ts = datetime.now()
-    # values_1m = json.loads(list_timediff(ts, 60))
-    # values_15m = json.loads(list_timediff(ts, 900))
-    power_line = set_multiline(dh.get_curr_power_list())
-    # quarter_line = set_multiline(values_15m)
+    ts = datetime.datetime.now()
+    power_line = set_multiline(dbm.get_curr_power_list())
     print(power_line)
     if current_power <= 500:
         currentlevel = "low"
@@ -318,11 +459,12 @@ def home():
         currentlevel = "high"
 
     return render_template('home.html', currentvalues=currentvalues, currentlevel=currentlevel,
-                           current_power=current_power, current_dt=current_dt, power_line=power_line, cpl=dh.get_curr_power_list())
+                           current_power=current_power, current_dt=current_dt,
+                           power_line=power_line, cpl=dbm.get_curr_power_list())
 
 @app.route('/current')
 def current_use():
-    return json.dumps(dh.get_curr_power_list())
+    return json.dumps(dbm.get_curr_power_list())
 
 @app.route('/test/<command>')
 def test(command):
@@ -335,10 +477,9 @@ def test(command):
         return answer
 
 
-
 def run_app():
 
-    if platform.system() == "Linux" and 'ttyUSB0' in os.listdir(os.environ('/dev')):
+    if platform.system() == "Linux" and 'ttyUSB0' in os.listdir('/dev'):
         ''' dirname = os.environ['/dev']
             objects = os.listdir(dirname)'''
         t1 = Thread(target=powermeter, args=[sensor_delay,])
@@ -346,7 +487,7 @@ def run_app():
     else:
         t1 = Thread(target=pm_simulator, args=[sensor_delay,])
         t1.start()
-    app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=True)
+    app.run(host='0.0.0.0', port=5555, debug=True, use_reloader=True)
 
 
 if __name__ == "__main__":

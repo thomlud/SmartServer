@@ -11,36 +11,36 @@
 
 <div class="container-fluid">
   <div class="card">
-      <h3 class="card-header text-center font-weight-bold text-uppercase py-4">Energy Consumption</h3>
+      <h5 class="card-header text-center font-weight-bold text-uppercase py-4">Energy Consumption</h5>
         <div class="card-body">
           <!-- ROW 1 -->
           <div class="row">
               <div class="col-sm">
-                  <h5>Datum / Uhrzeit</h5>
+                  <h6>Datum / Uhrzeit</h6>
                 </div>
                 <div class="col-sm">
                     <div class="alert alert-primary" role="alert">
-                      <h5><strong>{{ current_dt }}</strong></h5>
+                      <h6><strong>{{ current_dt }}</strong></h6>
                     </div>
                 </div>
               </div>
         <!-- ROW 2 -->
           <div class="row">
               <div class="col-sm">
-                  <h5>Aktueller Verbrauch</h5>
+                  <h6>Aktueller Verbrauch</h6>
                 </div>
                 <div class="col-sm">
                 {% if currentlevel == "low" %}
                     <div class="alert alert-success" role="alert">
-                        <h4><strong>{{current_power}} W</strong></h4>
+                        <h5><strong>{{current_power}} W</strong></h5>
                     </div>
                 {% elif currentlevel == "middle" %}
                     <div class="alert alert-warning" role="alert">
-                        <h4><strong>{{current_power}} W</strong></h4>
+                        <h6><strong>{{current_power}} W</strong></h6>
                     </div>
                 {% else %}
-                    <div class="alert alert-danger" role="alert">
-                            <h4><strong>{{current_power}} W</strong></h4>
+                    <div class="alert alert-danger" role="alert" id="out">
+                            <h6><strong>{{current_power}} W</strong></h6>
                     </div>
                 {% endif %}
                 </div>
@@ -49,22 +49,22 @@
       <!-- ROW 3 -->
           <div class="row">
               <div class="col-sm">
-                  <h5>Zählerstand NT</h5>
+                  <h6>Zählerstand NT</h6>
                 </div>
                 <div class="col-sm">
                     <div class="alert alert-primary" role="alert">
-                      <h5><strong>{{currentvalues.energy1}} kWh</strong></h5>
+                      <h6><strong>{{currentvalues.energy1}} kWh</strong></h6>
                     </div>
                 </div>
               </div>
       <!-- ROW 4 -->
           <div class="row">
               <div class="col-sm">
-                  <h5>Zählerstand HT</h5>
+                  <h6>Zählerstand HT</h6>
                 </div>
                 <div class="col-sm">
                     <div class="alert alert-primary" role="alert">
-                      <h5><strong>{{currentvalues.energy2}} kWh</strong></h5>
+                      <h6><strong>{{currentvalues.energy2}} kWh</strong></h6>
                     </div>
                 </div>
           </div>
@@ -74,7 +74,7 @@
   {% include "powerchart.html" %}
 
   <div class="card">
-    <h3 class="card-header text-center font-weight-bold text-uppercase py-4">Charts</h3>
+    <h5 class="card-header text-center font-weight-bold text-uppercase py-4">Charts</h5>
         <div class="card-body">
             <table class="table table-dark">
               <thead>
@@ -101,6 +101,28 @@
 
 </div>
 
+<script>
+   function sse() {
+        var source = new EventSource('/listen');
+        var out = document.getElementById('out');
+        source.onmessage = function(e) {
+          if (e.data.includes('reload')) {
+            window.location.reload(true);
+          } else {
+            out.textContent =  e.data + '\n' + out.textContent;
+            alert(e.data);
+          }
+          out.textContent =  e.data + '\n' + out.textContent;
+        };
+   }
+   sse();
+</script>
+
+<script>
+    function reloadWindow() {
+        window.location.reload(true);
+    }
+</script>
 
 {% endblock content %}
 </html>

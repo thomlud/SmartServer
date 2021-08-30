@@ -3,28 +3,12 @@
 <div class="card">
   <h4 class="card-header text-center font-weight-bold text-uppercase py-4">Power Chart</h4>
 
-</script>
   <div class="card-body">
-    <!-- Navigation Tabs Power Charts-->
-    <ul class="nav nav-tabs" id="myTab" role="tablist">
-      <li class="nav-item" role="presentation">
-        <a class="nav-link active" id="t15min-tab" data-toggle="tab" href="#t15min" role="tab" aria-controls="home" aria-selected="true">15min</a>
-      </li>
-      <li class="nav-item" role="presentation">
-        <a class="nav-link" id="t30min-tab" data-toggle="tab" href="#t30min" role="tab" aria-controls="profile" aria-selected="false">30min</a>
-      </li>
-      <li class="nav-item" role="presentation">
-        <a class="nav-link" id="t60min-tab" data-toggle="tab" href="#t60min" role="tab" aria-controls="contact" aria-selected="false">60min</a>
-      </li>
-    </ul>
 
-    <!-- POWER CHART AREAS -->
-    <div class="tab-content" id="myTabContent">
-
-      <div class="tab-pane fade show active" id="t15min" role="tabpanel" aria-labelledby="home-tab">
-        <!-- CURRENT QUARTER HOUR CHART-->
+      <!-- Powerchart 15 min on small screens -->
+      <div class="d-md-none">
         <svg width="800" height="340" viewbox="500 0 800 300">
-          <title id="title15">Current hour review</title>
+          <title id="title_15">Current hour review</title>
         <!-- <g id="xGrid">
           <text class="chart-text" x="0" y="10">Verbrauch</text>
           <line class="chart-grid" x1="2" x2="2" y1="0" y2="371"></line>
@@ -72,12 +56,12 @@
         <polyline style="stroke: #306f91; stroke-width: 4"
                   fill="none" id="PWR" points="{{power_line}}" />
         </svg>
+          <h6>hide on md and wider screens</h6>
       </div>
 
-      <div class="tab-pane fade" id="t30min" role="tabpanel" aria-labelledby="profile-tab">
-        <!-- CURRENT HALF HOUR CHART-->
+      <div class="d-none d-md-block d-lg-none">
         <svg width="800" height="340" viewbox="400 0 800 300">
-          <title id="title30">Current hour review</title>
+          <title id="title_30">Current hour review</title>
         <!-- <g id="xGrid">
           <text class="chart-text" x="0" y="10">Verbrauch</text>
           <line class="chart-grid" x1="2" x2="2" y1="0" y2="371"></line>
@@ -125,12 +109,12 @@
         <polyline style="stroke: #306f91; stroke-width: 4"
                   fill="none" id="PWR" points="{{power_line}}" />
         </svg>
+          <h6>md only</h6>
       </div>
 
-      <div class="tab-pane fade" id="t60min" role="tabpanel" aria-labelledby="contact-tab">
-        <!-- CURRENT HOUR CHART-->
+      <div class="d-none d-lg-block">
         <svg width="800" height="340" viewbox="0 0 800 300">
-          <title id="title">Current hour review</title>
+          <title id="title_60">Current hour review</title>
         <!-- <g id="xGrid">
           <text class="chart-text" x="0" y="10">Verbrauch</text>
           <line class="chart-grid" x1="2" x2="2" y1="0" y2="371"></line>
@@ -178,10 +162,15 @@
         <polyline style="stroke: #306f91; stroke-width: 4"
                   fill="none" id="PWR" points="{{power_line}}" />
         </svg>
-
+          <h6>hide on screens smaller than lg</h6>
       </div>
 
+      <!--<div class="d-none d-xl-block">hide on screens smaller than xl
+
+      </div>-->
+
     </div>
+
     <div class="card-footer">
     <button class="btn" onclick="myFunction()" id="demo">Width</button>
     <script>
@@ -196,12 +185,22 @@
   </div>
 </div>
 
+
+
+
+
+
 <div class="card">
     <img src="hourly_graph.png" class="card-img-top" alt="hourly graph">
     <div class="card-body">
-        <h5 class="card-title">Last 36 hours</h5>
-        <p class="card-text">NT: </p>
-        <p class="card-text">HT: </p>
+    <ul class="list-group">
+      <li class="list-group-item">An item</li>
+      <li class="list-group-item">A second item</li>
+      <li class="list-group-item">A third item</li>
+      <li class="list-group-item">A fourth item</li>
+      <li class="list-group-item">And a fifth one</li>
+    </ul>
+
     </div>
 </div>
 
