@@ -9,6 +9,7 @@ Flask-SQLAlchemy = "*"
 pyserial = "*"
 numpy = "*"
 matplotlib = "*"
+requests = "*"
 
 [dev-packages]
 

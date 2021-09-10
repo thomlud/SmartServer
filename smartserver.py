@@ -5,6 +5,7 @@
 import binascii
 import random
 import datetime
+import flask
 from flask import Flask, render_template, Response, request as freq
 from flask_sqlalchemy import SQLAlchemy
 import json
@@ -15,11 +16,12 @@ import matplotlib.dates as mdates
 import os
 import platform
 import queue
+import requests
 import serial
 from threading import Thread
 import time
 
-
+app_port = 8000
 app = Flask(__name__)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///values.db'
@@ -129,7 +131,7 @@ class HourTable(db.Model):
         self.energy2 = energy2
 
     def __repr__(self):
-        answer = json.dumps({"id": self.id, "timestamp": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        answer = json.dumps({"id": self.id, "datetime": self.timestamp,
                              "energy1": self.energy1, "energy2": self.energy2})
         return answer
 
@@ -146,7 +148,7 @@ class DayTable(db.Model):
         self.energy2 = energy2
 
     def __repr__(self):
-        answer = json.dumps({"id": self.id, "timestamp": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        answer = json.dumps({"id": self.id, "datetime": self.timestamp,
                              "energy1": self.energy1, "energy2": self.energy2})
         return answer
 
@@ -163,7 +165,7 @@ class MonthTable(db.Model):
         self.energy2 = energy2
 
     def __repr__(self):
-        answer = json.dumps({"id": self.id, "timestamp": self.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        answer = json.dumps({"id": self.id, "datetime": self.timestamp,
                              "energy1": self.energy1, "energy2": self.energy2})
         return answer
 
@@ -267,7 +269,7 @@ def pm_simulator(sens_delay):
         # dh.append_log(ts=dt, energy1=energy1, energy2=energy2, delay=log_delay_minutes)
         time.sleep(delay)
 
-def powermeter(sens_delay):
+def _powermeter(sens_delay):
     global current_power
     global current_dt
     db_write_level = 1
@@ -297,7 +299,7 @@ def powermeter(sens_delay):
         pos = data.find(end)
         if pos != -1:
             timestamp = (time.strftime("%Y-%m-%d ") + time.strftime("%H:%M:%S"))
-            dt = datetime.today()
+            dt = datetime.datetime.today()
             result = timestamp
             search = '0100010801ff'
             """ search key counter value 1 """
@@ -328,14 +330,90 @@ def powermeter(sens_delay):
                 result = result + ';' + str(power)
             # writexml(timestamp, energy1, energy2, power)
             current_power = power
-            current_dt = datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
-            msg = format_sse(data=str(current_power))
+            current_dt = datetime.datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
+            # msg = format_sse(data=str(current_power))
             # msg = format_sse(data="reload")
-            announcer.announce(msg=format_sse(data="reload"))
-            print(msg)
-            dbm.append_current_power(ts=dt, power=power)
-            dbm.append_data(dt, energy1, energy2, power)
+            # announcer.announce(msg=format_sse(data="reload"))
+            # print(msg)
+            # dbm.append_current_power(ts=dt, power=power)
+            # dbm.append_data(dt, energy1, energy2, power)
             time.sleep(sens_delay)
+            
+def powermeter(sens_delay):
+    global current_power
+    global current_dt
+    db_write_level = 1
+    port = serial.Serial(
+        port='/dev/ttyUSB0',
+        baudrate=9600,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS
+    )
+    # port.open();
+    start = '1b1b1b1b01010101'
+    end = '1b1b1b1b1a'
+    data = ''
+    while True:
+        ''' if db_write_level == 1:
+            db_write_level = 0
+        else:'''
+        db_write_level = 1
+
+        char_bin = port.read()
+        char = binascii.hexlify(char_bin)
+        data = data + char.decode('ascii')
+        pos = data.find(start)
+        if pos != -1:
+            data = data[pos:len(data)]
+        pos = data.find(end)
+        if pos != -1:
+            timestamp = (time.strftime("%Y-%m-%d ") + time.strftime("%H:%M:%S"))
+            dt = datetime.datetime.now()
+            result = timestamp
+            search = '0100010801ff'
+            """ search key counter value 1 """
+            pos1 = data.find(search)
+            if pos1 != -1:
+                pos1 = pos1 + len(search) + 14
+                value1 = data[pos1:pos1 + 10]
+                energy1 = int(value1, 16) / 1e4
+                print(timestamp + ' kWh: ' + search + ' = ' + value1 + ' = ' + str(energy1) + ' kWh')
+                result = result + ';' + str(energy1)
+            search = '0100010802ff'
+            """ search key counter value 2 """
+            pos2 = data.find(search)
+            if pos2 != -1:
+                pos2 = pos2 + len(search) + 14
+                value2 = data[pos2:pos2 + 10]
+                energy2 = int(value2, 16) / 1e4
+                print(timestamp + ' kWh: ' + search + ' = ' + value2 + ' = ' + str(energy2) + ' kWh')
+                result = result + ';' + str(energy2)
+            search = '0100100700ff'
+            """ search key topical consume """
+            pos3 = data.find(search)
+            if pos3 != -1:
+                pos3 = pos3 + len(search) + 14
+                value3 = data[pos3:pos3 + 8]
+                power = int(value3, 16) / 1e1
+                print('W: ' + search + ' = ' + value3 + ' = ' + str(power) + ' W')
+                result = result + ';' + str(power)
+            # writexml(timestamp, energy1, energy2, power)
+            current_power = power
+            current_dt = datetime.datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
+            jdata = json.dumps({"timestamp": dt.isoformat(timespec="seconds"), "energyNT": energy1, "energyHT": energy2, "power":power})
+            r = requests.post("http://localhost:%s/input" % str(app_port), jdata,
+                          headers={'Content-type': 'application/json'}, timeout=2.000)
+            print(r)
+            '''if db_write_level == 1:
+                if power:
+                    dbm.append_current_power(ts=dt, power=power)
+                if energy1 and energy2:
+                    dbm.append_data(ts=dt, energy1=energy1, energy2=energy2, power=power)'''
+            data = ''
+            time.sleep(sens_delay)
+            
+            
 
 def queryData():
     vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
@@ -441,6 +519,70 @@ def listen():
             yield msg
     return Response(stream(), mimetype='text/event-stream')
 
+
+@app.route('/input', methods=['GET', 'POST'])
+def inputdata():
+    answer = "Failed"
+    content = freq.get_json(silent=True, cache=False)
+    if content:
+        print(content)
+        dt = datetime.datetime.fromisoformat(content["timestamp"])
+        if content["power"]:
+            dbm.append_current_power(ts=dt, power=content["power"])
+            # msg = format_sse(data=str(current_power))
+            # msg = format_sse(data="reload")
+            announcer.announce(msg=format_sse(data="reload"))
+        if content["energyNT"] and content["energyHT"]:
+            dbm.append_data(ts=dt, energy1=content["energyNT"], energy2=content["energyHT"], power=content["power"])
+            answer = "Success"           
+    return answer
+                               
+
+@app.route('/test', methods=['GET', 'POST'])
+def test():
+    content = flask.request.values
+    if content:
+        print("##### Got content items: #####")
+        for k, v in content.items():
+            print('Key = {} and Value = {}'.format(k, v))
+
+    files = flask.request.files
+    if files:
+        print("##### Got files: #####")
+        for k, v in files.items():
+            print('Key = {} and Value = {}'.format(k, v))
+
+    maybe_json = flask.request.get_json(silent=True, cache=False)
+    if maybe_json:
+        print("##### Got json: #####")
+        thejson = json.dumps(maybe_json, ensure_ascii=False, indent=4)
+        print('thejson = ' + thejson)
+    else:
+        thejson = "no json"
+        print('thejson = ' + thejson)
+
+    args = flask.request.args  # args is ?user=john
+    if args:
+        print("##### Got args: #####")
+        for k, v in args.items():
+            print('Args with Key = {} and Value = {}'.format(k, v))
+
+    form = flask.request.form    # key/value sets
+    if form:
+        print("##### Got form data: #####")
+        for k, v in form.items():
+            print('Form with Key = {} and Value = {}'.format(k, v))
+
+    print("##### Data as text content: #####")
+    print(flask.request.get_data(as_text=True))
+    print("mimetype = %s" % flask.request.mimetype)
+    print("%s" % flask.request.content_length)
+    print("from Server: %s" % flask.request.host)
+    answer = "200"
+    
+    return answer
+
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     content = freq.values
@@ -466,8 +608,8 @@ def home():
 def current_use():
     return json.dumps(dbm.get_curr_power_list())
 
-@app.route('/test/<command>')
-def test(command):
+@app.route('/api/<command>')
+def api(command):
     if command == "listdb":
         answer = db.session.query(PowerLog).all()
         return answer
@@ -475,6 +617,10 @@ def test(command):
         ts = datetime.now()
         answer = list_timediff(ts, 60)
         return answer
+
+
+
+
 
 
 def run_app():
@@ -487,7 +633,7 @@ def run_app():
     else:
         t1 = Thread(target=pm_simulator, args=[sensor_delay,])
         t1.start()
-    app.run(host='0.0.0.0', port=5555, debug=True, use_reloader=True)
+    app.run(host='0.0.0.0', port=app_port, debug=True, use_reloader=True, threaded=True)
 
 
 if __name__ == "__main__":
