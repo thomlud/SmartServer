@@ -272,6 +272,7 @@ def pm_simulator(sens_delay):
 def _powermeter(sens_delay):
     global current_power
     global current_dt
+    power = 0
     db_write_level = 1
     port = serial.Serial(
         port='/dev/ttyUSB0',
@@ -342,6 +343,7 @@ def _powermeter(sens_delay):
 def powermeter(sens_delay):
     global current_power
     global current_dt
+    power = 0
     db_write_level = 1
     port = serial.Serial(
         port='/dev/ttyUSB0',
@@ -608,6 +610,38 @@ def home():
 def current_use():
     return json.dumps(dbm.get_curr_power_list())
 
+@app.route('/get/<command>')
+def getDbValue(command):
+    resultList = []
+    if command == "minute":
+        valList = db.session.query(MinuteTable).order_by(MinuteTable.id.desc()).all()
+    elif command == "hour":
+        valList = db.session.query(HourTable).order_by(HourTable.id.desc()).all()
+    elif command == "day":
+        valList = db.session.query(DayTable).order_by(DayTable.id.desc()).all()
+    elif command == "month":
+        valList = db.session.query(MonthTable).order_by(MonthTable.id.desc()).all()
+
+    if valList:
+        lastVal = {}
+        max = 60 if len(valList) >= 60 else len(valList)
+        for i in range(max):
+            ts = valList[i].timestamp
+            energyNT = round(valList[i].energy1, 3)
+            energyHT = round(valList[i].energy2, 3)
+            currentVal = {"ts": ts, "Strom_NT": energyNT, "Strom_HT": energyHT}
+            if lastVal:
+                currentVal["used_NT"] = round(lastVal["Strom_NT"] - currentVal["Strom_NT"], 3)
+                currentVal["used_HT"] = round(lastVal["Strom_HT"] - currentVal["Strom_HT"], 3)
+            resultList.append(currentVal)
+            lastVal = currentVal
+
+    if resultList:
+        return json.dumps(resultList, indent=2)
+    else:
+        return "{}"
+
+
 @app.route('/api/<command>')
 def api(command):
     if command == "listdb":
@@ -617,10 +651,6 @@ def api(command):
         ts = datetime.now()
         answer = list_timediff(ts, 60)
         return answer
-
-
-
-
 
 
 def run_app():

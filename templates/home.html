@@ -2,7 +2,6 @@
 {% extends "base.html" %}
 {% import "navbar.html" as nav %}
 
-
 {% block content %}
 
     {% block navbar %}
@@ -20,7 +19,7 @@
                 </div>
                 <div class="col-sm">
                     <div class="alert alert-primary" role="alert">
-                      <h6><strong>{{ current_dt }}</strong></h6>
+                      <h5><strong>{{ current_dt }}</strong></h5>
                     </div>
                 </div>
               </div>
@@ -32,15 +31,15 @@
                 <div class="col-sm">
                 {% if currentlevel == "low" %}
                     <div class="alert alert-success" role="alert">
-                        <h5><strong>{{current_power}} W</strong></h5>
+                        <h4><strong>{{current_power}} W</strong></h4>
                     </div>
                 {% elif currentlevel == "middle" %}
                     <div class="alert alert-warning" role="alert">
-                        <h6><strong>{{current_power}} W</strong></h6>
+                        <h4><strong>{{current_power}} W</strong></h4>
                     </div>
                 {% else %}
                     <div class="alert alert-danger" role="alert" id="out">
-                            <h6><strong>{{current_power}} W</strong></h6>
+                        <h4><strong>{{current_power}} W</strong></h4>
                     </div>
                 {% endif %}
                 </div>
@@ -53,7 +52,7 @@
                 </div>
                 <div class="col-sm">
                     <div class="alert alert-primary" role="alert">
-                      <h6><strong>{{currentvalues.energy1}} kWh</strong></h6>
+                      <h5><strong>{{currentvalues.energy1}} kWh</strong></h5>
                     </div>
                 </div>
               </div>
@@ -64,7 +63,7 @@
                 </div>
                 <div class="col-sm">
                     <div class="alert alert-primary" role="alert">
-                      <h6><strong>{{currentvalues.energy2}} kWh</strong></h6>
+                      <h5><strong>{{currentvalues.energy2}} kWh</strong></h5>
                     </div>
                 </div>
           </div>
