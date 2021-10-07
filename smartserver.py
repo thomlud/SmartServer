@@ -28,7 +28,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///power.db'
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'connect_args': {'check_same_thread': False}}
 db = SQLAlchemy(app)
-sensor_delay = 5    # sensor read delay in seconds
+sensor_delay = 10    # sensor read delay in seconds
 current_power = 0
 current_dt = datetime.datetime.now().strftime("%a,  %d.%m.%Y - %H:%M:%S")
 log_delay_minutes = 30
@@ -202,15 +202,15 @@ class DbManager:
                 new = MinuteTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
                 db.session.add(new)
                 print("MinuteTable logged on %s" % ts.isoformat())
-                if logtime - datetime.timedelta(minutes=60) >= convTime(self.lastHourRow.timestamp)["dt"]:
+                if logtime - datetime.timedelta(hours=1) >= convTime(self.lastHourRow.timestamp)["dt"]:
                     new_h = HourTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
                     db.session.add(new_h)
                     print("HourTable logged on %s" % ts.isoformat())
-                    if logtime - datetime.timedelta(day=1) >= convTime(self.lastDayRow.timestamp)["dt"]:
+                    if logtime - datetime.timedelta(days=1) >= convTime(self.lastDayRow.timestamp)["dt"]:
                         new_d = DayTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
                         db.session.add(new_d)
                         print("DayTable logged on %s" % ts.isoformat())
-                        if logtime - datetime.timedelta(month=1) >= convTime(self.lastMonthRow.timestamp)["dt"]:
+                        if logtime - datetime.timedelta(months=1) >= convTime(self.lastMonthRow.timestamp)["dt"]:
                             new_m = MonthTable(timestamp=convTime(ts)["str"], energy1=energy1, energy2=energy2)
                             db.session.add(new_m)
                             print("MonthTable logged on %s" % ts.isoformat())
@@ -415,7 +415,6 @@ def powermeter(sens_delay):
             data = ''
             time.sleep(sens_delay)
             
-            
 
 def queryData():
     vals = db.session.query(PowerLog).order_by(PowerLog.id.desc()).first()
@@ -608,11 +607,13 @@ def home():
 
 @app.route('/current')
 def current_use():
-    return json.dumps(dbm.get_curr_power_list())
+    return Response(json.dumps(dbm.get_curr_power_list()), mimetype='application/json')
 
 @app.route('/get/<command>')
 def getDbValue(command):
     resultList = []
+    valList = []
+
     if command == "minute":
         valList = db.session.query(MinuteTable).order_by(MinuteTable.id.desc()).all()
     elif command == "hour":
@@ -637,9 +638,9 @@ def getDbValue(command):
             lastVal = currentVal
 
     if resultList:
-        return json.dumps(resultList, indent=2)
+        return Response(json.dumps(resultList, indent=2), mimetype='application/json')
     else:
-        return "{}"
+        return Response("{}", mimetype="application/json")
 
 
 @app.route('/api/<command>')
